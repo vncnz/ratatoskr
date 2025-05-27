@@ -1,4 +1,6 @@
-use serde::Serialize;
+use serde::{Serialize,Deserialize};
+use std::process::{Command};
+
 use sysinfo::{Disks, System};
 
 use crate::utils;
@@ -21,6 +23,30 @@ pub struct DiskStats {
     pub used_size: u64,
     pub used_percent: u64,
     pub color: String
+}
+
+#[derive(Default, Serialize)]
+pub struct TempStats {
+    pub sensor: String,
+    pub temperature: f32
+}
+
+#[derive(Default, Serialize, Deserialize)]
+pub struct WeatherStats {
+    pub icon: String,
+    pub icon_name: String,
+    pub temp: i8,
+    pub temp_real: i8,
+    pub temp_unit: String,
+    pub text: String,
+    pub day: String,
+    pub sunrise: String,
+    pub sunset: String,
+    pub sunrise_mins: u64,
+    pub sunset_mins: u64,
+    pub daylight: f64,
+    pub locality: String,
+    pub humidity: u8
 }
 
 /* fn get_load_avg() -> SysUpdate {
@@ -56,26 +82,62 @@ pub fn get_ram_info () -> RamStats {
 
 
 pub fn get_disk_info () -> DiskStats {
-        let disks = Disks::new_with_refreshed_list();
-        for disk in &disks {
-            if (disk as &sysinfo::Disk).mount_point() == std::path::Path::new("/") {
-                if let Some(_name_str) = (disk as &sysinfo::Disk).name().to_str() {
-                    if let Some(_mount_str) = (disk as &sysinfo::Disk).mount_point().to_str() {
-                        let tos = (disk as &sysinfo::Disk).total_space();
-                        let avs = (disk as &sysinfo::Disk).available_space();
-                        let up = 100 - (avs * 100 / tos);
-                        return DiskStats {
-                            // name_str.to_string(),
-                            // mount_str.to_string(),
-                            total_size: tos,
-                            used_size: tos - avs,
-                            used_percent: up,
-                            color: utils::get_color_gradient(60.0, 90.0, up as f64, false)
-                        }
+    let disks = Disks::new_with_refreshed_list();
+    for disk in &disks {
+        if (disk as &sysinfo::Disk).mount_point() == std::path::Path::new("/") {
+            if let Some(_name_str) = (disk as &sysinfo::Disk).name().to_str() {
+                if let Some(_mount_str) = (disk as &sysinfo::Disk).mount_point().to_str() {
+                    let tos = (disk as &sysinfo::Disk).total_space();
+                    let avs = (disk as &sysinfo::Disk).available_space();
+                    let up = 100 - (avs * 100 / tos);
+                    return DiskStats {
+                        // name_str.to_string(),
+                        // mount_str.to_string(),
+                        total_size: tos,
+                        used_size: tos - avs,
+                        used_percent: up,
+                        color: utils::get_color_gradient(60.0, 90.0, up as f64, false)
                     }
                 }
             }
         }
-        // SysUpdate::Error("Disk not found".to_string())
-        DiskStats { total_size: 0, used_size: 0, used_percent: 100, color: "#FF0000".to_string() }
     }
+    // SysUpdate::Error("Disk not found".to_string())
+    DiskStats { total_size: 0, used_size: 0, used_percent: 100, color: "#FF0000".to_string() }
+}
+
+pub fn get_sys_temperatures () -> TempStats {
+    let components = sysinfo::Components::new_with_refreshed_list();
+    for component in &components {
+        if component.label() == "Tctl" {
+            if let Some(temp) = component.temperature() {
+                return TempStats {
+                    sensor: component.label().into(),
+                    temperature: temp
+                };
+            } else {
+                return TempStats {
+                    sensor: component.label().into(),
+                    temperature: 0.0
+                };
+            }
+        }
+    }
+    TempStats {
+        sensor: "".into(),
+        temperature: 0.0
+    }
+}
+
+pub fn get_weather () -> WeatherStats {
+    let output = Command::new("/home/vncnz/.config/eww/scripts/meteo.sh").arg("'Desenzano Del Garda'").arg("45.457692").arg("10.570684").output();
+    let stdout = String::from_utf8(output.unwrap().stdout).unwrap();
+    // println!("\n{:?}", stdout);
+    // let weather: WeatherObj;
+    if let Ok(weather) = serde_json::from_str(&stdout) {
+        return weather
+    }
+
+    WeatherStats::default()
+    
+}

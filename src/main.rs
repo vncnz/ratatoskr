@@ -1,7 +1,4 @@
 use serde::Serialize;
-use std::fs::{self, File};
-use std::io::Write;
-use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -12,11 +9,32 @@ use utils::*;
 mod sysutils;
 use sysutils::*;
 
+macro_rules! stat_updater {
+    ($stats:expr, $interval:expr, $getter:expr, $field:ident) => {
+        {
+            let stats = Arc::clone(&$stats);
+            thread::spawn(move || {
+                loop {
+                    loop {
+                    let value = $getter();
+                    if let Ok(mut data) = stats.lock() {
+                        data.$field = value;
+                    }
+                    std::thread::sleep($interval);
+                }
+                }
+            });
+        }
+    };
+}
+
 
 #[derive(Default, Serialize)]
 struct SystemStats {
     ram: RamStats,
     disk: DiskStats,
+    temperature: TempStats,
+    weather: WeatherStats
 }
 
 fn main() {
@@ -50,31 +68,10 @@ fn main() {
         thread::sleep(Duration::from_secs(2));
     } */
 
-   { // Thread RAM
-        let stats = Arc::clone(&stats);
-        thread::spawn(move || {
-            loop {
-                let ram_val = get_ram_info();
-                let mut data = stats.lock().unwrap();
-                data.ram = ram_val;
-                drop(data);
-                thread::sleep(Duration::from_secs(2));
-            }
-        });
-    }
-
-    { // Thread Disk
-        let stats = Arc::clone(&stats);
-        thread::spawn(move || {
-            loop {
-                let disk_val = get_disk_info(); // sostituisci col vero valore
-                let mut data = stats.lock().unwrap();
-                data.disk = disk_val;
-                drop(data);
-                thread::sleep(Duration::from_secs(2));
-            }
-        });
-    }
+    stat_updater!(stats, Duration::from_secs(2), get_ram_info, ram);
+    stat_updater!(stats, Duration::from_secs(2), get_disk_info, disk);
+    stat_updater!(stats, Duration::from_secs(2), get_sys_temperatures, temperature);
+    stat_updater!(stats, Duration::from_secs(600), get_weather, weather);
 
     loop {
             {
