@@ -34,7 +34,8 @@ struct SystemStats {
     ram: RamStats,
     disk: DiskStats,
     temperature: TempStats,
-    weather: WeatherStats
+    weather: WeatherStats,
+    loadavg: AvgLoadStats
 }
 
 fn main() {
@@ -72,6 +73,7 @@ fn main() {
     stat_updater!(stats, Duration::from_secs(2), get_disk_info, disk);
     stat_updater!(stats, Duration::from_secs(2), get_sys_temperatures, temperature);
     stat_updater!(stats, Duration::from_secs(600), get_weather, weather);
+    stat_updater!(stats, Duration::from_secs(2), get_load_avg, loadavg);
 
     loop {
             {

@@ -49,6 +49,13 @@ pub struct WeatherStats {
     pub humidity: u8
 }
 
+#[derive(Default, Serialize)]
+pub struct AvgLoadStats {
+    pub m1: f64,
+    pub m5: f64,
+    pub m15: f64
+}
+
 /* fn get_load_avg() -> SysUpdate {
     if let Ok(output) = std::fs::read_to_string("/proc/loadavg") {
         let parts: Vec<&str> = output.split_whitespace().collect();
@@ -137,7 +144,18 @@ pub fn get_weather () -> WeatherStats {
     if let Ok(weather) = serde_json::from_str(&stdout) {
         return weather
     }
-
     WeatherStats::default()
-    
+}
+
+pub fn get_load_avg() -> AvgLoadStats {
+    if let Ok(output) = std::fs::read_to_string("/proc/loadavg") {
+        let parts: Vec<&str> = output.split_whitespace().collect();
+        AvgLoadStats {
+            m1: parts[0].parse().expect("Error 1m"),
+            m5: parts[1].parse().expect("Error 5m"),
+            m15: parts[2].parse().expect("Error 15m")
+        }
+    } else {
+        AvgLoadStats::default()
+    }
 }
