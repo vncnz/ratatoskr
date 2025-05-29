@@ -53,7 +53,10 @@ pub struct WeatherStats {
 pub struct AvgLoadStats {
     pub m1: f64,
     pub m5: f64,
-    pub m15: f64
+    pub m15: f64,
+    pub ncpu: usize,
+    pub critical_factor: f64,
+    pub color: String
 }
 
 /* fn get_load_avg() -> SysUpdate {
@@ -147,13 +150,42 @@ pub fn get_weather () -> WeatherStats {
     WeatherStats::default()
 }
 
+static mut N_CPU: usize = 0;
+
 pub fn get_load_avg() -> AvgLoadStats {
+    if unsafe { N_CPU } == 0 {
+        unsafe { N_CPU = std::fs::read_to_string("/proc/cpuinfo")
+            .map(|contents| {
+                contents
+                    .lines()
+                    .filter(|line| line.starts_with("processor"))
+                    .count()
+            })
+            .unwrap_or(1) } // fallback: almeno 1 core
+    }
     if let Ok(output) = std::fs::read_to_string("/proc/loadavg") {
         let parts: Vec<&str> = output.split_whitespace().collect();
+
+        // let T = clamp((load1 / load5 - 1.0) / 1.0, 0.0, 1.0);
+        // let I = clamp(load1 / custom_max_load, 0.0, 1.0);
+        // let S = 0.5 * T + 0.5 * I;
+        let m1 = parts[0].parse().expect("Error 1m");
+        let m5 = parts[1].parse().expect("Error 5m");
+        let m15 = parts[2].parse().expect("Error 15m");
+
+        let incrementing_factor = m1 / m5 - 1.0;
+        let ncpu = unsafe { N_CPU } as f64;
+        let absolute_factor = ((m1 / ncpu) as f64).clamp(0.0, 1.0);
+        let overall_factor = ((0.6 * incrementing_factor as f64) + 0.4 * absolute_factor).clamp(0.0, 1.0);
+        let color = utils::get_color_gradient(0.0, 1.0, overall_factor, false);
+
         AvgLoadStats {
-            m1: parts[0].parse().expect("Error 1m"),
-            m5: parts[1].parse().expect("Error 5m"),
-            m15: parts[2].parse().expect("Error 15m")
+            m1: m1,
+            m5: m5,
+            m15: m15,
+            ncpu: unsafe { N_CPU },
+            critical_factor: overall_factor,
+            color: color
         }
     } else {
         AvgLoadStats::default()
