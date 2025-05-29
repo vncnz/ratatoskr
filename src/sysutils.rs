@@ -150,10 +150,10 @@ pub fn get_weather () -> WeatherStats {
     WeatherStats::default()
 }
 
-static mut N_CPU: usize = 0;
+// static mut N_CPU: usize = 0;
 
 use once_cell::sync::Lazy;
-/* static CORE_COUNT: Lazy<usize> = Lazy::new(|| {
+static CORE_COUNT: Lazy<usize> = Lazy::new(|| {
     std::fs::read_to_string("/proc/cpuinfo")
         .map(|contents| {
             contents
@@ -162,10 +162,10 @@ use once_cell::sync::Lazy;
                 .count()
         })
         .unwrap_or(1)
-}); */
+});
 
 pub fn get_load_avg() -> AvgLoadStats {
-    if unsafe { N_CPU } == 0 {
+    /* if unsafe { N_CPU } == 0 {
         unsafe { N_CPU = std::fs::read_to_string("/proc/cpuinfo")
             .map(|contents| {
                 contents
@@ -174,9 +174,10 @@ pub fn get_load_avg() -> AvgLoadStats {
                     .count()
             })
             .unwrap_or(1) } // fallback: almeno 1 core
-    }
+    } */
     if let Ok(output) = std::fs::read_to_string("/proc/loadavg") {
         let parts: Vec<&str> = output.split_whitespace().collect();
+        let ncpu = *CORE_COUNT as f64;
 
         // let T = clamp((load1 / load5 - 1.0) / 1.0, 0.0, 1.0);
         // let I = clamp(load1 / custom_max_load, 0.0, 1.0);
@@ -186,7 +187,6 @@ pub fn get_load_avg() -> AvgLoadStats {
         let m15 = parts[2].parse().expect("Error 15m");
 
         let incrementing_factor = m1 / m5 - 1.0;
-        let ncpu = unsafe { N_CPU } as f64;
         let absolute_factor = ((m1 / ncpu) as f64).clamp(0.0, 1.0);
         let overall_factor = ((0.6 * incrementing_factor as f64) + 0.4 * absolute_factor).clamp(0.0, 1.0);
         let color = utils::get_color_gradient(0.0, 1.0, overall_factor, false);
@@ -195,7 +195,7 @@ pub fn get_load_avg() -> AvgLoadStats {
             m1: m1,
             m5: m5,
             m15: m15,
-            ncpu: unsafe { N_CPU },
+            ncpu: *CORE_COUNT,
             critical_factor: overall_factor,
             color: color
         }
