@@ -152,6 +152,18 @@ pub fn get_weather () -> WeatherStats {
 
 static mut N_CPU: usize = 0;
 
+use once_cell::sync::Lazy;
+/* static CORE_COUNT: Lazy<usize> = Lazy::new(|| {
+    std::fs::read_to_string("/proc/cpuinfo")
+        .map(|contents| {
+            contents
+                .lines()
+                .filter(|line| line.starts_with("processor"))
+                .count()
+        })
+        .unwrap_or(1)
+}); */
+
 pub fn get_load_avg() -> AvgLoadStats {
     if unsafe { N_CPU } == 0 {
         unsafe { N_CPU = std::fs::read_to_string("/proc/cpuinfo")
