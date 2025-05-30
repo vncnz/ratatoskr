@@ -203,3 +203,80 @@ pub fn get_load_avg() -> AvgLoadStats {
         AvgLoadStats::default()
     }
 }
+
+
+use niri_ipc::{
+    socket::{Socket, SOCKET_PATH_ENV},
+    state::{EventStreamState, EventStreamStatePart},
+    Event, Request,
+};
+use std::env;
+use std::fs::File;
+use std::io::{BufRead, BufReader, Write};
+use std::os::unix::net::UnixStream;
+use std::sync::{Arc, Mutex};
+
+pub fn get_niri_situation () -> std::io::Result<Arc<Mutex<EventStreamState>>> {
+    let socket_path = env::var(SOCKET_PATH_ENV).expect("Variabile d'ambiente NIRI_SOCKET non impostata");
+
+    // Connetti al socket
+    let stream = UnixStream::connect(socket_path)?;
+    let reader = BufReader::new(stream.try_clone()?);
+    let mut writer = stream;
+
+    // Invia la richiesta per avviare il flusso di eventi
+    let request = serde_json::to_string(&Request::EventStream).unwrap();
+    writeln!(writer, "{}", request)?;
+    writer.flush()?;
+
+    // Inizializza lo stato degli eventi
+    let state = Arc::new(Mutex::new(EventStreamState::default()));
+    let state_clone = Arc::clone(&state);
+
+    std::thread::spawn(move || {
+        // Leggi e gestisci gli eventi in arrivo
+        for line in reader.lines() {
+            let line = match line {
+                Ok(l) => {
+                    println!("line: {:?}", &l);
+                    l
+                },
+                Err(e) => {
+                    eprintln!("Read error: {e}");
+                    continue;
+                }
+            };
+
+            if line.trim() == r#"{"Ok":"Handled"}"# {
+                continue;
+            }
+
+            /*
+            let event: Event = match serde_json::from_str(&line) {
+                Ok(e) => e,
+                Err(e) => {
+                    eprintln!("Errore nel parsing dell'evento: {e}\nContenuto: {line}");
+                    continue;
+                }
+            };
+            */
+
+            let evt = serde_json::from_str(&line);
+            println!("evt: {:?}", &evt);
+            let event: Event = evt.unwrap();
+            let mut s = state_clone.lock().unwrap();
+            s.apply(event);
+
+            // Stampa la lista aggiornata delle finestre
+            println!("Finestre attuali:");
+            for window in s.windows.windows.values() {
+                println!(
+                    "- ID: {}, Titolo: {:?}, App: {:?}",
+                    window.id, window.title, window.app_id
+                );
+            }
+        }
+    });
+
+    Ok(state)
+}

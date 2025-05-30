@@ -40,6 +40,7 @@ struct SystemStats {
 
 fn main() {
     let output_path = "/tmp/ratatoskr.json";
+    let output_niri_path = "/tmp/windows.json";
     let stats = Arc::new(Mutex::new(SystemStats::default() /*{
         ram: RamStats {
             total_memory: 0,
@@ -69,6 +70,19 @@ fn main() {
         thread::sleep(Duration::from_secs(2));
     } */
 
+    let niristate_result = get_niri_situation();
+    let niristate: Option<Arc<Mutex<niri_ipc::state::EventStreamState>>>;
+    match niristate_result {
+        Ok(l) => {
+            println!("line: {:?}", &l);
+            niristate = Some(l);
+        },
+        Err(e) => {
+            eprintln!("Read error: {e}");
+            niristate = None;
+        }
+    };
+
     stat_updater!(stats, Duration::from_secs(2), get_ram_info, ram);
     stat_updater!(stats, Duration::from_secs(2), get_disk_info, disk);
     stat_updater!(stats, Duration::from_secs(2), get_sys_temperatures, temperature);
@@ -76,10 +90,17 @@ fn main() {
     stat_updater!(stats, Duration::from_secs(2), get_load_avg, loadavg);
 
     loop {
-            {
-        let data = stats.lock().unwrap();
+        {
+            let data = stats.lock().unwrap();
             if let Err(e) = write_json_atomic(output_path, &*data) {
                 eprintln!("Failed to write JSON: {e}");
+            }
+
+            if let Some(st) = &niristate {
+                let niridata = st.lock().unwrap();
+                if let Err(e) = write_niri_json_atomic(output_niri_path, &*niridata) {
+                    eprintln!("Failed to write JSON: {e}");
+                }
             }
         }
         thread::sleep(Duration::from_secs(2));

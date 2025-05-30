@@ -56,3 +56,32 @@ pub fn write_json_atomic<P: AsRef<Path>>(path: P, stats: &SystemStats) -> std::i
 
     Ok(())
 }
+
+use std::collections::HashMap;
+use serde::Serialize;
+
+
+#[derive(Default, Serialize)]
+struct MyNiriState {
+    pub windows: HashMap<u64, niri_ipc::Window>,
+    pub workspaces: HashMap<u64, niri_ipc::Workspace>
+}
+
+pub fn write_niri_json_atomic<P: AsRef<Path>>(path: P, stats: &niri_ipc::state::EventStreamState) -> std::io::Result<()> {
+    let tmp_path = path.as_ref().with_extension("tmp");
+
+    let json = serde_json::to_string(&MyNiriState {
+        windows: stats.windows.windows.clone(),
+        workspaces: stats.workspaces.workspaces.clone()
+    }).unwrap();
+
+    // Scrive su file temporaneo
+    let mut tmp_file = fs::File::create(&tmp_path)?;
+    tmp_file.write_all(json.as_bytes())?;
+    tmp_file.flush()?; // Assicura che i dati siano effettivamente scritti
+
+    // Rinomina atomica
+    fs::rename(tmp_path, path)?;
+
+    Ok(())
+}
