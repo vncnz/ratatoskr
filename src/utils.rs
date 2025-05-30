@@ -59,20 +59,31 @@ pub fn write_json_atomic<P: AsRef<Path>>(path: P, stats: &SystemStats) -> std::i
 
 use std::collections::HashMap;
 use serde::Serialize;
-
+use freedesktop_icons::lookup;
+use std::path::PathBuf;
 
 #[derive(Default, Serialize)]
 struct MyNiriState {
     pub windows: HashMap<u64, niri_ipc::Window>,
-    pub workspaces: HashMap<u64, niri_ipc::Workspace>
+    pub workspaces: HashMap<u64, niri_ipc::Workspace>,
+    pub icons: HashMap<String, Option<PathBuf>>
 }
 
 pub fn write_niri_json_atomic<P: AsRef<Path>>(path: P, stats: &niri_ipc::state::EventStreamState) -> std::io::Result<()> {
     let tmp_path = path.as_ref().with_extension("tmp");
 
+    let mut icons: HashMap<String, Option<PathBuf>> = HashMap::new();
+    stats.windows.windows.clone().into_iter().for_each(|(_, w)| {
+        let appid = w.app_id.unwrap();
+        let iconpath = lookup(&appid)/*.with_theme("Adwaita")*/.with_cache().find();
+        println!("{} {:?}", appid, iconpath);
+        icons.insert(appid.clone(), iconpath);
+    });
+
     let json = serde_json::to_string(&MyNiriState {
         windows: stats.windows.windows.clone(),
-        workspaces: stats.workspaces.workspaces.clone()
+        workspaces: stats.workspaces.workspaces.clone(),
+        icons: icons
     }).unwrap();
 
     // Scrive su file temporaneo

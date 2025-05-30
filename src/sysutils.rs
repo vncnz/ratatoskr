@@ -238,7 +238,7 @@ pub fn get_niri_situation () -> std::io::Result<Arc<Mutex<EventStreamState>>> {
         for line in reader.lines() {
             let line = match line {
                 Ok(l) => {
-                    println!("line: {:?}", &l);
+                    // println!("line: {:?}", &l);
                     l
                 },
                 Err(e) => {
@@ -268,13 +268,13 @@ pub fn get_niri_situation () -> std::io::Result<Arc<Mutex<EventStreamState>>> {
             s.apply(event);
 
             // Stampa la lista aggiornata delle finestre
-            println!("Finestre attuali:");
+            /* println!("Finestre attuali:");
             for window in s.windows.windows.values() {
                 println!(
                     "- ID: {}, Titolo: {:?}, App: {:?}",
                     window.id, window.title, window.app_id
                 );
-            }
+            } */
         }
     });
 

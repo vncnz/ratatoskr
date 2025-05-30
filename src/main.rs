@@ -93,13 +93,13 @@ fn main() {
         {
             let data = stats.lock().unwrap();
             if let Err(e) = write_json_atomic(output_path, &*data) {
-                eprintln!("Failed to write JSON: {e}");
+                eprintln!("Failed to write sysinfo JSON: {e}");
             }
 
             if let Some(st) = &niristate {
                 let niridata = st.lock().unwrap();
                 if let Err(e) = write_niri_json_atomic(output_niri_path, &*niridata) {
-                    eprintln!("Failed to write JSON: {e}");
+                    eprintln!("Failed to write niri JSON: {e}");
                 }
             }
         }
