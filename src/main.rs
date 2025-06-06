@@ -35,7 +35,9 @@ struct SystemStats {
     disk: DiskStats,
     temperature: TempStats,
     weather: WeatherStats,
-    loadavg: AvgLoadStats
+    loadavg: AvgLoadStats,
+    volume: VolumeStats,
+    written_at: u64
 }
 
 fn main() {
@@ -88,9 +90,14 @@ fn main() {
     stat_updater!(stats, Duration::from_secs(2), get_sys_temperatures, temperature);
     stat_updater!(stats, Duration::from_secs(600), get_weather, weather);
     stat_updater!(stats, Duration::from_secs(2), get_load_avg, loadavg);
+    stat_updater!(stats, Duration::from_secs(1), get_volume, volume);
+    // stat_updater!(stats, Duration::from_secs(2), get_load_avg, network);
 
     loop {
         {
+            if let Ok(mut data) = stats.lock() {
+                data.written_at = get_unix_time();
+            }
             let data = stats.lock().unwrap();
             if let Err(e) = write_json_atomic(output_path, &*data) {
                 eprintln!("Failed to write sysinfo JSON: {e}");

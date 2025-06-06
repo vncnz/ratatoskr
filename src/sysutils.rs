@@ -61,6 +61,20 @@ pub struct AvgLoadStats {
     pub color: String
 }
 
+#[derive(Default, Serialize)]
+pub struct VolumeStats {
+    pub value: i64,
+    pub icon: String,
+    pub color: String,
+    pub clazz: String
+}
+#[derive(Deserialize)]
+pub struct VolumeObj {
+    pub value: i64,
+    pub icon: String,
+    pub clazz: String
+}
+
 /* fn get_load_avg() -> SysUpdate {
     if let Ok(output) = std::fs::read_to_string("/proc/loadavg") {
         let parts: Vec<&str> = output.split_whitespace().collect();
@@ -152,58 +166,72 @@ pub fn get_sys_temperatures () -> TempStats {
     }
 }
 
+
+pub fn get_volume () -> VolumeStats {
+    let output = Command::new("/home/vncnz/.config/eww/scripts/volume.sh").arg("json").output();
+    let stdout = String::from_utf8(output.unwrap().stdout).unwrap();
+    // println!("\n{:?}", stdout);
+    let vol: Result<VolumeObj, _> = serde_json::from_str(&stdout);
+    if let Ok(volume) = vol {
+        return VolumeStats {
+            color: utils::get_color_gradient(40.0, 100.0, volume.value as f64, false),
+            icon: volume.icon,
+            value: volume.value,
+            clazz: volume.clazz
+        }
+    } else {
+        VolumeStats::default()
+    }
+}
+
+use std::time::{SystemTime, UNIX_EPOCH};
+pub fn get_unix_time () -> u64 {
+    match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(n) => n.as_secs(),
+        Err(_) => 0,
+    }
+}
 /*
-fn get_volume () -> SysUpdate {
-        let output = Command::new("/home/vncnz/.config/eww/scripts/volume.sh").arg("json").output();
-        let stdout = String::from_utf8(output.unwrap().stdout).unwrap();
-        // println!("\n{:?}", stdout);
-        if let Ok(volume) = serde_json::from_str(&stdout) {
-            SysUpdate::Volume(volume)
-        } else {
-            SysUpdate::Error("Error with serde and volume data".to_string())
-        }
+fn get_brightness () -> SysUpdate {
+    let output = Command::new("/home/vncnz/.config/eww/scripts/brightness.sh").arg("json").output();
+    let stdout = String::from_utf8(output.unwrap().stdout).unwrap();
+    // println!("\n{:?}", stdout);
+    if let Ok(brightness) = serde_json::from_str(&stdout) {
+        SysUpdate::Brightness(brightness)
+    } else {
+        SysUpdate::Error("Error with serde and brightness data".to_string())
     }
+}
 
-    fn get_brightness () -> SysUpdate {
-        let output = Command::new("/home/vncnz/.config/eww/scripts/brightness.sh").arg("json").output();
-        let stdout = String::from_utf8(output.unwrap().stdout).unwrap();
-        // println!("\n{:?}", stdout);
-        if let Ok(brightness) = serde_json::from_str(&stdout) {
-            SysUpdate::Brightness(brightness)
-        } else {
-            SysUpdate::Error("Error with serde and brightness data".to_string())
-        }
-    }
+fn spawn_network_monitor (sender: glib::Sender<SysUpdate>) {
+    let mut child = Command::new("/home/vncnz/.config/eww/scripts/network.sh")
+        .arg(&"json")
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("Failed to spawn network monitor");
 
-    fn spawn_network_monitor (sender: glib::Sender<SysUpdate>) {
-        let mut child = Command::new("/home/vncnz/.config/eww/scripts/network.sh")
-            .arg(&"json")
-            .stdout(Stdio::piped())
-            .spawn()
-            .expect("Failed to spawn network monitor");
-    
-        let stdout = child.stdout.take().expect("Failed to open stdout");
-        let reader = BufReader::new(stdout);
-    
-        std::thread::spawn(move || {
-            for line in reader.lines() {
-                match line {
-                    Ok(data) => {
-                        // println!("Evento di rete: {}", data);
-                        if let Ok(net) = serde_json::from_str(&data) {
-                            let _ = sender.send(SysUpdate::Network(net));
-                        } else {
-                            let _ = sender.send(SysUpdate::Error("Error with serde and network data".to_string()));
-                        }
-                    }
-                    Err(err) => {
-                        eprintln!("Errore lettura output network: {}", err);
-                        break;
+    let stdout = child.stdout.take().expect("Failed to open stdout");
+    let reader = BufReader::new(stdout);
+
+    std::thread::spawn(move || {
+        for line in reader.lines() {
+            match line {
+                Ok(data) => {
+                    // println!("Evento di rete: {}", data);
+                    if let Ok(net) = serde_json::from_str(&data) {
+                        let _ = sender.send(SysUpdate::Network(net));
+                    } else {
+                        let _ = sender.send(SysUpdate::Error("Error with serde and network data".to_string()));
                     }
                 }
+                Err(err) => {
+                    eprintln!("Errore lettura output network: {}", err);
+                    break;
+                }
             }
-        });
-    }
+        }
+    });
+}
 */
 
 pub fn get_weather () -> WeatherStats {
@@ -329,7 +357,7 @@ pub fn get_niri_situation () -> std::io::Result<Arc<Mutex<EventStreamState>>> {
             */
 
             let evt = serde_json::from_str(&line);
-            println!("evt: {:?}", &evt);
+            // println!("evt: {:?}", &evt);
             let event: Event = evt.unwrap();
             let mut s = state_clone.lock().unwrap();
             s.apply(event);
