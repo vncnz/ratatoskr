@@ -28,7 +28,9 @@ pub struct DiskStats {
 #[derive(Default, Serialize)]
 pub struct TempStats {
     pub sensor: String,
-    pub temperature: f32
+    pub value: f32,
+    pub color: String,
+    pub icon: String
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -121,23 +123,88 @@ pub fn get_sys_temperatures () -> TempStats {
     for component in &components {
         if component.label() == "Tctl" {
             if let Some(temp) = component.temperature() {
+                let icon = if temp < 80.0 { "" } else 
+                                         if temp < 85.0 { "" } else
+                                         if temp < 90.0 { "" } else
+                                         if temp < 95.0 { "" } else { "" };
+                let color = utils::get_color_gradient(80.0, 99.0, temp as f64, false);
                 return TempStats {
                     sensor: component.label().into(),
-                    temperature: temp
+                    value: temp,
+                    color: color,
+                    icon: icon.into()
                 };
             } else {
                 return TempStats {
                     sensor: component.label().into(),
-                    temperature: 0.0
+                    value: 0.0,
+                    color: "#777777".into(),
+                    icon: "󱤋".into()
                 };
             }
         }
     }
     TempStats {
         sensor: "".into(),
-        temperature: 0.0
+        value: 0.0,
+        color: "#777777".into(),
+        icon: "󱤋".into()
     }
 }
+
+/*
+fn get_volume () -> SysUpdate {
+        let output = Command::new("/home/vncnz/.config/eww/scripts/volume.sh").arg("json").output();
+        let stdout = String::from_utf8(output.unwrap().stdout).unwrap();
+        // println!("\n{:?}", stdout);
+        if let Ok(volume) = serde_json::from_str(&stdout) {
+            SysUpdate::Volume(volume)
+        } else {
+            SysUpdate::Error("Error with serde and volume data".to_string())
+        }
+    }
+
+    fn get_brightness () -> SysUpdate {
+        let output = Command::new("/home/vncnz/.config/eww/scripts/brightness.sh").arg("json").output();
+        let stdout = String::from_utf8(output.unwrap().stdout).unwrap();
+        // println!("\n{:?}", stdout);
+        if let Ok(brightness) = serde_json::from_str(&stdout) {
+            SysUpdate::Brightness(brightness)
+        } else {
+            SysUpdate::Error("Error with serde and brightness data".to_string())
+        }
+    }
+
+    fn spawn_network_monitor (sender: glib::Sender<SysUpdate>) {
+        let mut child = Command::new("/home/vncnz/.config/eww/scripts/network.sh")
+            .arg(&"json")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Failed to spawn network monitor");
+    
+        let stdout = child.stdout.take().expect("Failed to open stdout");
+        let reader = BufReader::new(stdout);
+    
+        std::thread::spawn(move || {
+            for line in reader.lines() {
+                match line {
+                    Ok(data) => {
+                        // println!("Evento di rete: {}", data);
+                        if let Ok(net) = serde_json::from_str(&data) {
+                            let _ = sender.send(SysUpdate::Network(net));
+                        } else {
+                            let _ = sender.send(SysUpdate::Error("Error with serde and network data".to_string()));
+                        }
+                    }
+                    Err(err) => {
+                        eprintln!("Errore lettura output network: {}", err);
+                        break;
+                    }
+                }
+            }
+        });
+    }
+*/
 
 pub fn get_weather () -> WeatherStats {
     let output = Command::new("/home/vncnz/.config/eww/scripts/meteo.sh").arg("'Desenzano Del Garda'").arg("45.457692").arg("10.570684").output();
