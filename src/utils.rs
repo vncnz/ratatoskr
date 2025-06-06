@@ -76,7 +76,7 @@ pub fn write_niri_json_atomic<P: AsRef<Path>>(path: P, stats: &niri_ipc::state::
     stats.windows.windows.clone().into_iter().for_each(|(_, w)| {
         let appid = w.app_id.unwrap();
         let iconpath = lookup(&appid)/*.with_theme("Adwaita")*/.with_cache().find();
-        println!("{} {:?}", appid, iconpath);
+        // println!("{} {:?}", appid, iconpath);
         icons.insert(appid.clone(), iconpath);
     });
 
