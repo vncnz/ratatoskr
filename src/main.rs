@@ -37,7 +37,8 @@ struct SystemStats {
     weather: WeatherStats,
     loadavg: AvgLoadStats,
     volume: VolumeStats,
-    written_at: u64
+    written_at: u64,
+    metronome: bool
 }
 
 fn main() {
@@ -97,6 +98,7 @@ fn main() {
         {
             if let Ok(mut data) = stats.lock() {
                 data.written_at = get_unix_time();
+                data.metronome = !data.metronome;
             }
             let data = stats.lock().unwrap();
             if let Err(e) = write_json_atomic(output_path, &*data) {
