@@ -375,3 +375,78 @@ pub fn get_niri_situation () -> std::io::Result<Arc<Mutex<EventStreamState>>> {
 
     Ok(state)
 }
+
+
+use libpulse_binding as pulse;
+use pulse::callbacks::ListResult;
+use pulse::context::Context;
+use pulse::mainloop::standard::{Mainloop, IterateResult};
+use pulse::proplist::Proplist;
+use std::thread;
+
+#[derive(Debug, Clone, Default)]
+pub struct AudioState {
+    pub volume: u32,
+    pub muted: bool,
+    pub port_name: Option<String> // Es: "analog-output-headphones"
+}
+
+/*pub fn get_audio_situation() -> std::io::Result<Arc<Mutex<AudioState>>> {
+    let audio_state = Arc::new(Mutex::new(AudioState::default()));
+    let state_clone = Arc::clone(&audio_state);
+
+    thread::spawn(move || {
+        let mut proplist = Proplist::new().unwrap();
+        proplist.set_str(pulse::proplist::properties::APPLICATION_NAME, "ratatoskr-audio").unwrap();
+
+        let mut mainloop = Mainloop::new().unwrap();
+        let mut context = Context::new_with_proplist(&mainloop, "ratatoskr-context", &proplist).unwrap();
+
+        context.connect(None, pulse::context::FlagSet::NOFLAGS, None).unwrap();
+        while let IterateResult::Success(_) = mainloop.iterate(false) {
+            if let pulse::context::State::Ready = context.get_state() {
+                break;
+            }
+        }
+
+        let introspect = context.introspect();
+        introspect.get_sink_info_list(move |result| {
+            if let ListResult::Item(sink) = result {
+                let mut data = state_clone.lock().unwrap();
+                data.volume = sink.volume.avg().0;
+                data.muted = sink.mute;
+            }
+        });
+
+        // Subscribing to events
+        let context = Arc::new(Mutex::new(context));
+        let state_clone = Arc::new(Mutex::new(state_clone));
+        let context_clone = Arc::clone(&context);
+        let state_clone_2 = Arc::clone(&state_clone);
+        context.lock().unwrap().set_subscribe_callback(Some(Box::new(move |facility, _op, _idx| {
+            if facility == Some(pulse::context::subscribe::Facility::Sink) {
+                let introspect = context_clone.lock().unwrap().introspect();
+                
+                introspect.get_sink_info_list(move |result| {
+                    if let ListResult::Item(sink) = result {
+                        let mut data = state_clone_2.lock().unwrap();
+                        data.volume = sink.volume.avg().0;
+                        data.muted = sink.mute;
+                        data.port_name = sink
+                            .active_port
+                            .as_ref()
+                            .and_then(|p| p.name.as_ref().map(|name| name.to_string()));
+                    }
+                });
+            }
+        })));
+
+
+        context.lock().unwrap().subscribe(pulse::context::subscribe::InterestMaskSet::SINK, |_| {});
+        loop {
+            mainloop.iterate(true);
+        }
+    });
+
+    Ok(audio_state)
+}*/

@@ -44,34 +44,7 @@ struct SystemStats {
 fn main() {
     let output_path = "/tmp/ratatoskr.json";
     let output_niri_path = "/tmp/windows.json";
-    let stats = Arc::new(Mutex::new(SystemStats::default() /*{
-        ram: RamStats {
-            total_memory: 0,
-            used_memory: 0,
-            total_swap: 0,
-            used_swap: 0,
-            mem_percent: 0,
-            swap_percent: 0,
-        },
-        disk: DiskStats {
-            total_size: 0,
-            used_size: 0,
-            used_percent: 0,
-        },
-    }*/));
-
-    /* loop {
-        let stats = SystemStats {
-            ram: get_ram_info(),
-            disk: get_disk_info()
-        };
-
-        if let Err(e) = write_json_atomic(output_path, &stats) {
-            eprintln!("Failed to write stats: {}", e);
-        }
-
-        thread::sleep(Duration::from_secs(2));
-    } */
+    let stats = Arc::new(Mutex::new(SystemStats::default()));
 
     let niristate_result = get_niri_situation();
     let niristate: Option<Arc<Mutex<niri_ipc::state::EventStreamState>>>;
@@ -86,11 +59,11 @@ fn main() {
         }
     };
 
-    stat_updater!(stats, Duration::from_secs(2), get_ram_info, ram);
-    stat_updater!(stats, Duration::from_secs(2), get_disk_info, disk);
-    stat_updater!(stats, Duration::from_secs(2), get_sys_temperatures, temperature);
+    stat_updater!(stats, Duration::from_secs(1), get_ram_info, ram);
+    stat_updater!(stats, Duration::from_secs(5), get_disk_info, disk);
+    stat_updater!(stats, Duration::from_secs(1), get_sys_temperatures, temperature);
     stat_updater!(stats, Duration::from_secs(600), get_weather, weather);
-    stat_updater!(stats, Duration::from_secs(2), get_load_avg, loadavg);
+    stat_updater!(stats, Duration::from_millis(500), get_load_avg, loadavg);
     stat_updater!(stats, Duration::from_secs(1), get_volume, volume);
     // stat_updater!(stats, Duration::from_secs(2), get_load_avg, network);
 
@@ -112,7 +85,7 @@ fn main() {
                 }
             }
         }
-        thread::sleep(Duration::from_secs(2));
+        thread::sleep(Duration::from_millis(500));
     }
 }
 
