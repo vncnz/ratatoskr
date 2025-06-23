@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script builds skoll and then copies the exec to ~/.config/niri
+# This script builds ratatoskr and then copies the exec to ~/.config/niri
 
 cargo build --release;
 cp ~/Repositories/ratatoskr/target/release/ratatoskr ~/.config/niri/;
