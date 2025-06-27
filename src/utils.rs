@@ -25,6 +25,9 @@ fn hsv_to_rgb(h: f64, s: f64, v: f64) -> (u8, u8, u8) {
     (r, g, b)
 }
 
+// "Good" color can be white or green, medium color is always yellow and "bad" color is always red.
+static DEFAULT_WHITE: bool = false;
+
 pub fn get_color_gradient(min: f64, max: f64, value: f64, reversed: bool) -> String {
     let clamped = value.clamp(min, max);
     let mut ratio = if (max - min).abs() < f64::EPSILON {
@@ -34,8 +37,15 @@ pub fn get_color_gradient(min: f64, max: f64, value: f64, reversed: bool) -> Str
     };
 
     if !reversed { ratio = 1.0 - ratio; }
-    let sat = f64::max(1.0 - (ratio * ratio * ratio), 0.0);
-    let hue = 60.0 * ratio; // 120 -> 0
+    let sat;
+    let hue;
+    if DEFAULT_WHITE {
+        sat = f64::max(1.0 - (ratio * ratio * ratio), 0.0);
+        hue = 60.0 * ratio; // 60 -> 0
+    } else {
+        sat = 1.0;
+        hue = 75.0 * ratio; // 75 -> 0
+    }
     let (r, g, b) = hsv_to_rgb(hue, sat, 1.0);
 
     format!("#{:02X}{:02X}{:02X}", r, g, b)

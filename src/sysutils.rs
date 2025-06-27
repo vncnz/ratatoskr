@@ -153,7 +153,7 @@ pub fn get_sys_temperatures () -> TempStats {
                     sensor: component.label().into(),
                     value: 0.0,
                     color: "#777777".into(),
-                    icon: "󱤋".into()
+                    icon: "󱔱".into()
                 };
             }
         }
