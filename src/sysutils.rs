@@ -82,7 +82,8 @@ pub struct BatteryStats {
     pub eta: Option<f32>,
     pub state: String,
     pub icon: String,
-    pub color: Option<String>
+    pub color: Option<String>,
+    pub watt: f32
 }
 
 /* fn get_load_avg() -> SysUpdate {
@@ -321,7 +322,8 @@ pub fn get_battery() -> BatteryStats {
                 eta: None,
                 state: "no_manager".to_string(),
                 icon: "󰂑".to_string(),
-                color: None
+                color: None,
+                watt: 0.0
             }
         }
     };
@@ -335,7 +337,8 @@ pub fn get_battery() -> BatteryStats {
             eta: None,
             state: "no_battery".to_string(),
             icon: "".to_string(),
-            color: None
+            color: None,
+            watt: 0.0
         };
     }
 
@@ -343,6 +346,7 @@ pub fn get_battery() -> BatteryStats {
 
         let percentage = ((battery.state_of_charge().value * 100.0) as f32).round() as i32;
         let capacity = battery.energy_full().value as f32;
+        let watt = battery.energy_rate().value as f32;
 
         let eta = match battery.time_to_empty().or(battery.time_to_full()) {
             Some(t) => Some((t.value as f32) / 60.0),  // Converte da secondi a minuti
@@ -387,7 +391,8 @@ pub fn get_battery() -> BatteryStats {
             eta,
             state,
             icon,
-            color
+            color,
+            watt
         }
     } else {
         BatteryStats {
@@ -396,7 +401,8 @@ pub fn get_battery() -> BatteryStats {
             eta: None,
             state: "no_battery".to_string(),
             icon: "".to_string(),
-            color: None
+            color: None,
+            watt: 0.0
         }
     }
 }
