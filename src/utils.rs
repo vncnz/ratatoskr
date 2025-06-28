@@ -44,7 +44,7 @@ pub fn get_color_gradient(min: f64, max: f64, value: f64, reversed: bool) -> Str
         hue = 60.0 * ratio; // 60 -> 0
     } else {
         sat = 1.0;
-        hue = 75.0 * ratio; // 75 -> 0
+        hue = 100.0 * ratio; // 100 -> 0
     }
     let (r, g, b) = hsv_to_rgb(hue, sat, 1.0);
 

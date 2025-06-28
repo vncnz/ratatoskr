@@ -75,6 +75,16 @@ pub struct VolumeObj {
     pub clazz: String
 }
 
+#[derive(Default, Serialize)]
+pub struct BatteryStats {
+    pub percentage: i32,
+    pub capacity: f32,
+    pub eta: Option<f32>,
+    pub state: String,
+    pub icon: String,
+    pub color: Option<String>
+}
+
 /* fn get_load_avg() -> SysUpdate {
     if let Ok(output) = std::fs::read_to_string("/proc/loadavg") {
         let parts: Vec<&str> = output.split_whitespace().collect();
@@ -298,6 +308,99 @@ pub fn get_load_avg() -> AvgLoadStats {
         AvgLoadStats::default()
     }
 }
+
+use battery::{Manager, State};
+
+pub fn get_battery() -> BatteryStats {
+    let manager = match Manager::new() {
+        Ok(m) => m,
+        Err(_) => {
+            return BatteryStats {
+                percentage: 0,
+                capacity: 0.0,
+                eta: None,
+                state: "no_manager".to_string(),
+                icon: "󰂑".to_string(),
+                color: None
+            }
+        }
+    };
+
+    let batteries = manager.batteries();
+
+    if batteries.is_err() {
+        return BatteryStats {
+            percentage: 0,
+            capacity: 0.0,
+            eta: None,
+            state: "no_battery".to_string(),
+            icon: "".to_string(),
+            color: None
+        };
+    }
+
+    if let Some(Ok(battery)) = batteries.unwrap().next() {
+
+        let percentage = ((battery.state_of_charge().value * 100.0) as f32).round() as i32;
+        let capacity = battery.energy_full().value as f32;
+
+        let eta = match battery.time_to_empty().or(battery.time_to_full()) {
+            Some(t) => Some((t.value as f32) / 60.0),  // Converte da secondi a minuti
+            None => None,
+        };
+
+        let state = match battery.state() {
+            State::Charging => "Charging",
+            State::Discharging => "Discharging",
+            State::Full => "Full",
+            State::Empty => "Empty",
+            State::Unknown => "Unknown",
+            _ => "Strage"
+        }
+        .to_string();
+
+        let icon = (match battery.state() {
+            State::Charging => "󰂄",
+            State::Discharging => {
+                if percentage < 15 { "󰁺" }
+                else if percentage < 25 { "󰁻" }
+                else if percentage < 35 { "󰁼" }
+                else if percentage < 45 { "󰁽" }
+                else if percentage < 55 { "󰁾" }
+                else if percentage < 65 { "󰁿" }
+                else if percentage < 75 { "󰂀" }
+                else if percentage < 85 { "󰂁" }
+                else if percentage < 95 { "󰂂" }
+                else { "󰁹" }
+            },
+            State::Full | State::Unknown => "󱟢",
+            State::Empty => "Empty",
+            // State::Unknown => "󰂑",
+            _ => "󱧥"
+        }).to_string();
+
+        let color = Some(utils::get_color_gradient(20.0, 70.0, percentage as f64, true));
+
+        BatteryStats {
+            percentage,
+            capacity,
+            eta,
+            state,
+            icon,
+            color
+        }
+    } else {
+        BatteryStats {
+            percentage: 0,
+            capacity: 0.0,
+            eta: None,
+            state: "no_battery".to_string(),
+            icon: "".to_string(),
+            color: None
+        }
+    }
+}
+
 
 
 use niri_ipc::{

@@ -37,6 +37,7 @@ struct SystemStats {
     weather: WeatherStats,
     loadavg: AvgLoadStats,
     volume: VolumeStats,
+    battery: BatteryStats,
     written_at: u64,
     metronome: bool
 }
@@ -65,6 +66,7 @@ fn main() {
     stat_updater!(stats, Duration::from_secs(600), get_weather, weather);
     stat_updater!(stats, Duration::from_millis(500), get_load_avg, loadavg);
     stat_updater!(stats, Duration::from_secs(1), get_volume, volume);
+    stat_updater!(stats, Duration::from_secs(1), get_battery, battery);
     // stat_updater!(stats, Duration::from_secs(2), get_load_avg, network);
 
     loop {
