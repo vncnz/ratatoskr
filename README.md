@@ -8,5 +8,6 @@ Please note that this is a personal project, for personal use, developed in my (
 The aim of this project is to collect some metrics and write them to a single json file in a temporary directory. Every process can read this file, ensuring consistency and sync in data visualization between launcher and statusbar in my machine.
 
 # TODO
+- Add warning flag everywhere (ram, disk, temp, etc)
 - Add network infos
 - Add brightness infos
