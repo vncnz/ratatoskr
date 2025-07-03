@@ -204,36 +204,6 @@ fn get_brightness () -> SysUpdate {
         SysUpdate::Error("Error with serde and brightness data".to_string())
     }
 }
-
-fn spawn_network_monitor (sender: glib::Sender<SysUpdate>) {
-    let mut child = Command::new("/home/vncnz/.config/eww/scripts/network.sh")
-        .arg(&"json")
-        .stdout(Stdio::piped())
-        .spawn()
-        .expect("Failed to spawn network monitor");
-
-    let stdout = child.stdout.take().expect("Failed to open stdout");
-    let reader = BufReader::new(stdout);
-
-    std::thread::spawn(move || {
-        for line in reader.lines() {
-            match line {
-                Ok(data) => {
-                    // println!("Evento di rete: {}", data);
-                    if let Ok(net) = serde_json::from_str(&data) {
-                        let _ = sender.send(SysUpdate::Network(net));
-                    } else {
-                        let _ = sender.send(SysUpdate::Error("Error with serde and network data".to_string()));
-                    }
-                }
-                Err(err) => {
-                    eprintln!("Errore lettura output network: {}", err);
-                    break;
-                }
-            }
-        }
-    });
-}
 */
 
 pub fn get_weather () -> WeatherStats {
@@ -407,7 +377,8 @@ pub struct NetworkStats {
     pub ssid: Option<String>,
     pub signal: Option<u8>,
     pub ip: Option<String>,
-    pub icon: String
+    pub icon: String,
+    pub color: Option<String>
 }
 
 pub fn get_network_stats() -> Option<NetworkStats> {
@@ -427,6 +398,7 @@ pub fn get_network_stats() -> Option<NetworkStats> {
         let ip = get_ip(&iface);
         let conn_type = parts[1].to_string();
         let mut icon = if conn_type == "ethernet" { "󰈀" } else { "󰞃" };
+        let mut color: Option<String> = None;
         let ssid = if conn_type == "wifi" {
             // SSID
             let out = Command::new("nmcli")
@@ -442,6 +414,7 @@ pub fn get_network_stats() -> Option<NetworkStats> {
                     else if sig < 30 { icon = "󰢼"; }
                     else if sig < 60 { icon = "󰢽"; }
                     else { icon = "󰢾"; }
+                    color = Some(utils::get_color_gradient(20.0, 60.0, sig as f64, true));
                 }
 
                 if wifi_parts.len() >= 3 && wifi_parts[0] == "yes" {
@@ -451,7 +424,8 @@ pub fn get_network_stats() -> Option<NetworkStats> {
                         ssid: Some(wifi_parts[1].to_string()),
                         signal,
                         ip,
-                        icon: icon.to_string()
+                        icon: icon.to_string(),
+                        color
                     });
                 }
             }
@@ -463,7 +437,8 @@ pub fn get_network_stats() -> Option<NetworkStats> {
                 ssid: None,
                 signal: None,
                 ip,
-                icon: icon.to_string()
+                icon: icon.to_string(),
+                color
             })
         }?;
         return Some(ssid);
