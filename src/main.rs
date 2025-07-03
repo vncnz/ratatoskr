@@ -38,6 +38,7 @@ struct SystemStats {
     loadavg: AvgLoadStats,
     volume: VolumeStats,
     battery: BatteryStats,
+    network: Option<NetworkStats>,
     written_at: u64,
     metronome: bool
 }
@@ -67,7 +68,7 @@ fn main() {
     stat_updater!(stats, Duration::from_millis(500), get_load_avg, loadavg);
     stat_updater!(stats, Duration::from_secs(1), get_volume, volume);
     stat_updater!(stats, Duration::from_secs(1), get_battery, battery);
-    // stat_updater!(stats, Duration::from_secs(2), get_load_avg, network);
+    stat_updater!(stats, Duration::from_secs(1), get_network_stats, network);
 
     loop {
         {

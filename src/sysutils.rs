@@ -86,15 +86,6 @@ pub struct BatteryStats {
     pub watt: f32
 }
 
-/* fn get_load_avg() -> SysUpdate {
-    if let Ok(output) = std::fs::read_to_string("/proc/loadavg") {
-        let parts: Vec<&str> = output.split_whitespace().collect();
-        SysUpdate::LoadAvg(parts[0].parse().expect("Error 1m"), parts[1].parse().expect("Error 5m"), parts[2].parse().expect("Error 15m"))
-    } else {
-        SysUpdate::Error("Errore".into())
-    }
-} */
-
 pub fn get_ram_info () -> RamStats {
     let mut sys = System::new();
     sys.refresh_memory();
@@ -173,7 +164,7 @@ pub fn get_sys_temperatures () -> TempStats {
         sensor: "".into(),
         value: 0.0,
         color: "#777777".into(),
-        icon: "󱤋".into()
+        icon: "󱔱".into()
     }
 }
 
@@ -405,6 +396,88 @@ pub fn get_battery() -> BatteryStats {
             watt: 0.0
         }
     }
+}
+
+// use std::process::Command;
+
+#[derive(Default,Serialize,Debug)]
+pub struct NetworkStats {
+    pub iface: String,
+    pub conn_type: String,
+    pub ssid: Option<String>,
+    pub signal: Option<u8>,
+    pub ip: Option<String>,
+    pub icon: String
+}
+
+pub fn get_network_stats() -> Option<NetworkStats> {
+    let output = Command::new("nmcli")
+        .args(["-t", "-f", "DEVICE,TYPE,STATE,CONNECTION", "device"])
+        .output()
+        .ok()?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for line in stdout.lines() {
+        let parts: Vec<&str> = line.split(':').collect();
+        if parts.len() < 4 || parts[2] != "connected" {
+            continue;
+        }
+
+        let iface = parts[0].to_string();
+        let ip = get_ip(&iface);
+        let conn_type = parts[1].to_string();
+        let mut icon = if conn_type == "ethernet" { "󰈀" } else { "󰞃" };
+        let ssid = if conn_type == "wifi" {
+            // SSID
+            let out = Command::new("nmcli")
+                .args(["-t", "-f", "ACTIVE,SSID,SIGNAL", "dev", "wifi"])
+                .output()
+                .ok()?;
+            let lines = String::from_utf8_lossy(&out.stdout);
+            for wifi_line in lines.lines() {
+                let wifi_parts: Vec<&str> = wifi_line.split(':').collect();
+                let signal = wifi_parts[2].parse().ok();
+                if let Some(sig) = signal {
+                    if sig < 15 { icon = "󰢿"; }
+                    else if sig < 30 { icon = "󰢼"; }
+                    else if sig < 60 { icon = "󰢽"; }
+                    else { icon = "󰢾"; }
+                }
+
+                if wifi_parts.len() >= 3 && wifi_parts[0] == "yes" {
+                    return Some(NetworkStats {
+                        iface,
+                        conn_type,
+                        ssid: Some(wifi_parts[1].to_string()),
+                        signal,
+                        ip,
+                        icon: icon.to_string()
+                    });
+                }
+            }
+            None
+        } else {
+            Some(NetworkStats {
+                iface,
+                conn_type,
+                ssid: None,
+                signal: None,
+                ip,
+                icon: icon.to_string()
+            })
+        }?;
+        return Some(ssid);
+    }
+    None
+}
+
+fn get_ip(iface: &str) -> Option<String> {
+    let out = Command::new("nmcli")
+        .args(["-g", "IP4.ADDRESS", "device", "show", iface])
+        .output()
+        .ok()?;
+    let text = String::from_utf8_lossy(&out.stdout);
+    text.lines().next().map(|s| s.split('/').next().unwrap_or("").to_string())
 }
 
 
