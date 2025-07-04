@@ -455,6 +455,44 @@ fn get_ip(iface: &str) -> Option<String> {
     text.lines().next().map(|s| s.split('/').next().unwrap_or("").to_string())
 }
 
+#[derive(Default, Serialize)]
+pub struct EmbeddedDisplayStats {
+    pub brightness_current: u32,
+    pub brightness_max: u32,
+    pub perc: u8,
+    pub icon: String
+}
+
+pub fn get_brightness_stats() -> Option<EmbeddedDisplayStats> {
+    
+    let output = Command::new("sh")
+        .arg("-c")
+        .arg("brightnessctl g; brightnessctl m")
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut lines = stdout.lines();
+
+    let brightness_current = lines.next()?.trim().parse::<u32>().ok()?;
+    let brightness_max = lines.next()?.trim().parse::<u32>().ok()?;
+    let perc = (100.0 * (brightness_current as f32) / (brightness_max as f32)).round() as u8;
+
+    let icons = ["", "", "", "", "", "", "", "", "", "", "", "", "", ""];
+    let icon_idx = ((brightness_current as f32) / (brightness_max as f32) * (icons.len() as f32)).round() as usize;
+    let icon = icons[icon_idx].into();
+
+    Some(EmbeddedDisplayStats {
+        brightness_current,
+        brightness_max,
+        perc,
+        icon
+    })
+}
 
 
 use niri_ipc::{

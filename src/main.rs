@@ -39,6 +39,7 @@ struct SystemStats {
     volume: VolumeStats,
     battery: BatteryStats,
     network: Option<NetworkStats>,
+    display: Option<EmbeddedDisplayStats>,
     written_at: u64,
     metronome: bool
 }
@@ -52,7 +53,7 @@ fn main() {
     let niristate: Option<Arc<Mutex<niri_ipc::state::EventStreamState>>>;
     match niristate_result {
         Ok(l) => {
-            println!("line: {:?}", &l);
+            // println!("line: {:?}", &l);
             niristate = Some(l);
         },
         Err(e) => {
@@ -69,6 +70,7 @@ fn main() {
     stat_updater!(stats, Duration::from_secs(1), get_volume, volume);
     stat_updater!(stats, Duration::from_secs(1), get_battery, battery);
     stat_updater!(stats, Duration::from_secs(1), get_network_stats, network);
+    stat_updater!(stats, Duration::from_secs(1), get_brightness_stats, display);
 
     loop {
         {
