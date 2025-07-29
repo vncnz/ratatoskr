@@ -29,7 +29,7 @@ pub struct DiskStats {
 pub struct TempStats {
     pub sensor: String,
     pub value: f32,
-    pub color: String,
+    pub color: Option<String>,
     pub icon: String
 }
 
@@ -147,14 +147,14 @@ pub fn get_sys_temperatures () -> TempStats {
                 return TempStats {
                     sensor: component.label().into(),
                     value: temp,
-                    color: color,
+                    color: Some(color),
                     icon: icon.into()
                 };
             } else {
                 return TempStats {
                     sensor: component.label().into(),
                     value: 0.0,
-                    color: "#777777".into(),
+                    color: None,
                     icon: "󱔱".into()
                 };
             }
@@ -163,7 +163,7 @@ pub fn get_sys_temperatures () -> TempStats {
     TempStats {
         sensor: "".into(),
         value: 0.0,
-        color: "#777777".into(),
+        color: None,
         icon: "󱔱".into()
     }
 }
