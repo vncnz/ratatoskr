@@ -14,7 +14,9 @@ pub struct RamStats {
     pub mem_percent: u64,
     pub swap_percent: u64,
     pub mem_color: String,
-    pub swap_color: String
+    pub swap_color: String,
+    pub mem_warn: f64,
+    pub swap_warn: f64
 }
 
 #[derive(Default, Serialize)]
@@ -22,7 +24,8 @@ pub struct DiskStats {
     pub total_size: u64,
     pub used_size: u64,
     pub used_percent: u64,
-    pub color: String
+    pub color: String,
+    pub warn: f64
 }
 
 #[derive(Default, Serialize)]
@@ -30,7 +33,8 @@ pub struct TempStats {
     pub sensor: String,
     pub value: f32,
     pub color: Option<String>,
-    pub icon: String
+    pub icon: String,
+    pub warn: f64
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -104,7 +108,9 @@ pub fn get_ram_info () -> RamStats {
         mem_percent: mp,
         swap_percent: sp,
         mem_color: utils::get_color_gradient(60.0, 90.0, mp as f64, false),
-        swap_color: utils::get_color_gradient(60.0, 90.0, sp as f64, false)
+        swap_color: utils::get_color_gradient(60.0, 90.0, sp as f64, false),
+        mem_warn: utils::get_warn_level(60.0, 90.0, mp as f64, false),
+        swap_warn: utils::get_warn_level(60.0, 90.0, sp as f64, false)
     }
 }
 
@@ -124,14 +130,15 @@ pub fn get_disk_info () -> DiskStats {
                         total_size: tos,
                         used_size: tos - avs,
                         used_percent: up,
-                        color: utils::get_color_gradient(60.0, 90.0, up as f64, false)
+                        color: utils::get_color_gradient(60.0, 90.0, up as f64, false),
+                        warn: utils::get_warn_level(60.0, 90.0, up as f64, false)
                     }
                 }
             }
         }
     }
     // SysUpdate::Error("Disk not found".to_string())
-    DiskStats { total_size: 0, used_size: 0, used_percent: 100, color: "#FF0000".to_string() }
+    DiskStats { total_size: 0, used_size: 0, used_percent: 100, color: "#FF0000".to_string(), warn: 1.0 }
 }
 
 pub fn get_sys_temperatures () -> TempStats {
@@ -148,14 +155,16 @@ pub fn get_sys_temperatures () -> TempStats {
                     sensor: component.label().into(),
                     value: temp,
                     color: Some(color),
-                    icon: icon.into()
+                    icon: icon.into(),
+                    warn: utils::get_warn_level(80.0, 99.0, temp as f64, false)
                 };
             } else {
                 return TempStats {
                     sensor: component.label().into(),
                     value: 0.0,
                     color: None,
-                    icon: "󱔱".into()
+                    icon: "󱔱".into(),
+                    warn: 0.5
                 };
             }
         }
@@ -164,7 +173,8 @@ pub fn get_sys_temperatures () -> TempStats {
         sensor: "".into(),
         value: 0.0,
         color: None,
-        icon: "󱔱".into()
+        icon: "󱔱".into(),
+        warn: 0.5
     }
 }
 

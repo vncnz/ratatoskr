@@ -25,6 +25,13 @@ fn hsv_to_rgb(h: f64, s: f64, v: f64) -> (u8, u8, u8) {
     (r, g, b)
 }
 
+pub fn get_warn_level(min: f64, max: f64, value: f64, reversed: bool) -> f64 {
+    let warn_level = if value < min { 0.0 }
+                          else if value < max { (value - min) / max }
+                          else { 1.0 };
+    if reversed { 1.0 - warn_level } else { warn_level }
+}
+
 // "Good" color can be white or green, medium color is always yellow and "bad" color is always red.
 static DEFAULT_WHITE: bool = false;
 
