@@ -61,7 +61,7 @@ pub struct AvgLoadStats {
     pub m5: f64,
     pub m15: f64,
     pub ncpu: usize,
-    pub critical_factor: f64,
+    pub warn: f64,
     pub color: String
 }
 
@@ -273,7 +273,7 @@ pub fn get_load_avg() -> AvgLoadStats {
             m5: m5,
             m15: m15,
             ncpu: *CORE_COUNT,
-            critical_factor: overall_factor,
+            warn: overall_factor,
             color: color
         }
     } else {
@@ -388,7 +388,8 @@ pub struct NetworkStats {
     pub signal: Option<u8>,
     pub ip: Option<String>,
     pub icon: String,
-    pub color: Option<String>
+    pub color: Option<String>,
+    pub warn: f64
 }
 
 pub fn get_network_stats() -> Option<NetworkStats> {
@@ -409,6 +410,7 @@ pub fn get_network_stats() -> Option<NetworkStats> {
         let conn_type = parts[1].to_string();
         let mut icon = if conn_type == "ethernet" { "󰈀" } else { "󰞃" };
         let mut color: Option<String> = None;
+        let mut warn = 0.0;
         let ssid = if conn_type == "wifi" {
             // SSID
             let out = Command::new("nmcli")
@@ -425,6 +427,7 @@ pub fn get_network_stats() -> Option<NetworkStats> {
                     else if sig < 60 { icon = "󰢽"; }
                     else { icon = "󰢾"; }
                     color = Some(utils::get_color_gradient(20.0, 60.0, sig as f64, true));
+                    warn = utils::get_warn_level(20.0, 60.0, sig as f64, true)
                 }
 
                 if wifi_parts.len() >= 3 && wifi_parts[0] == "yes" {
@@ -435,7 +438,8 @@ pub fn get_network_stats() -> Option<NetworkStats> {
                         signal,
                         ip,
                         icon: icon.to_string(),
-                        color
+                        color,
+                        warn
                     });
                 }
             }
@@ -448,7 +452,8 @@ pub fn get_network_stats() -> Option<NetworkStats> {
                 signal: None,
                 ip,
                 icon: icon.to_string(),
-                color
+                color,
+                warn
             })
         }?;
         return Some(ssid);
