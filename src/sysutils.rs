@@ -164,7 +164,7 @@ pub fn get_sys_temperatures () -> TempStats {
                     value: 0.0,
                     color: None,
                     icon: "󱔱".into(),
-                    warn: 0.5
+                    warn: 0.0
                 };
             }
         }
@@ -174,7 +174,7 @@ pub fn get_sys_temperatures () -> TempStats {
         value: 0.0,
         color: None,
         icon: "󱔱".into(),
-        warn: 0.5
+        warn: 0.0
     }
 }
 
