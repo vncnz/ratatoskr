@@ -27,7 +27,7 @@ fn hsv_to_rgb(h: f64, s: f64, v: f64) -> (u8, u8, u8) {
 
 pub fn get_warn_level(min: f64, max: f64, value: f64, reversed: bool) -> f64 {
     let warn_level = if value < min { 0.0 }
-                          else if value < max { (value - min) / max }
+                          else if value < max { (value - min) / (max - min) }
                           else { 1.0 };
     if reversed { 1.0 - warn_level } else { warn_level }
 }
