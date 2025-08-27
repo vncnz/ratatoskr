@@ -263,9 +263,10 @@ pub fn get_load_avg() -> AvgLoadStats {
         let m5 = parts[1].parse().expect("Error 5m");
         let m15 = parts[2].parse().expect("Error 15m");
 
-        let incrementing_factor = m1 / m5 - 1.0;
-        let absolute_factor = ((m1 / ncpu) as f64).clamp(0.0, 1.0);
-        let overall_factor = ((0.6 * incrementing_factor as f64) + 0.4 * absolute_factor).clamp(0.0, 1.0);
+        let incrementing_factor = ((m1 / m5 - 1.0) as f64).clamp(-0.5, 1.0);
+        let absolute_factor = (((m1 - 1.0) / ncpu) as f64).clamp(0.0, 1.0);
+        let overall_factor = ((0.3 * incrementing_factor as f64) + 0.7 * absolute_factor).clamp(0.0, 1.0);
+        // println!("0.3*{incrementing_factor} + 0.7*{absolute_factor} = {overall_factor}");
         let color = utils::get_color_gradient(0.0, 1.0, overall_factor, false);
 
         AvgLoadStats {
