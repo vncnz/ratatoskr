@@ -34,7 +34,7 @@ struct SystemStats {
     ram: RamStats,
     disk: DiskStats,
     temperature: TempStats,
-    weather: WeatherStats,
+    weather: Option<WeatherStats>,
     loadavg: AvgLoadStats,
     volume: VolumeStats,
     battery: BatteryStats,

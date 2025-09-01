@@ -216,15 +216,16 @@ fn get_brightness () -> SysUpdate {
 }
 */
 
-pub fn get_weather () -> WeatherStats {
+pub fn get_weather () -> Option<WeatherStats> {
     let output = Command::new("/home/vncnz/.config/eww/scripts/meteo.sh").arg("Desenzano Del Garda").arg("45.457692").arg("10.570684").output();
     let stdout = String::from_utf8(output.unwrap().stdout).unwrap();
     // println!("\n{:?}", stdout);
     // let weather: WeatherObj;
     if let Ok(weather) = serde_json::from_str(&stdout) {
-        return weather
+        return Some(weather)
     }
-    WeatherStats::default()
+    // WeatherStats::default()
+    return None
 }
 
 // static mut N_CPU: usize = 0;
