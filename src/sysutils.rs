@@ -1,7 +1,8 @@
 use serde::{Serialize,Deserialize};
-use std::process::{Command};
+use std::{process::Command, time::Instant};
 
 use sysinfo::{Disks, System};
+use chrono::Utc;
 
 use crate::utils;
 
@@ -52,7 +53,8 @@ pub struct WeatherStats {
     pub sunset_mins: u64,
     pub daylight: f64,
     pub locality: String,
-    pub humidity: u8
+    pub humidity: u8,
+    pub updated: Option<String>
 }
 
 #[derive(Default, Serialize)]
@@ -221,7 +223,8 @@ pub fn get_weather () -> Option<WeatherStats> {
     let stdout = String::from_utf8(output.unwrap().stdout).unwrap();
     // println!("\n{:?}", stdout);
     // let weather: WeatherObj;
-    if let Ok(weather) = serde_json::from_str(&stdout) {
+    if let Ok(mut weather) = serde_json::from_str::<WeatherStats>(&stdout) {
+        weather.updated = Some(format!("{}", Utc::now().to_rfc3339()));
         return Some(weather)
     }
     // WeatherStats::default()
