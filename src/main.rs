@@ -1,7 +1,7 @@
 use serde::Serialize;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 mod utils;
 use utils::*;
@@ -9,25 +9,28 @@ use utils::*;
 mod sysutils;
 use sysutils::*;
 
-macro_rules! stat_updater {
-    ($stats:expr, $interval:expr, $getter:expr, $field:ident) => {
+macro_rules! stat_updater { // New version, standby-proof!
+    ($stats:expr, $interval:expr, $getter:expr, $field:ident, $check_sleep:expr) => {
         {
             let stats = Arc::clone(&$stats);
             thread::spawn(move || {
+                let mut last_update = Instant::now() - $interval;
+                let sleep_time = if $check_sleep { std::cmp::min($interval, Duration::from_secs(1)) } else { $interval };
                 loop {
-                    loop {
-                    let value = $getter();
-                    if let Ok(mut data) = stats.lock() {
-                        data.$field = value;
+                    let run_now = if $check_sleep { last_update.elapsed() >= $interval } else { true };
+                    if run_now {
+                        let value = $getter();
+                        if let Ok(mut data) = stats.lock() {
+                            data.$field = value;
+                        }
+                        last_update = Instant::now();
                     }
-                    std::thread::sleep($interval);
-                }
+                    std::thread::sleep(sleep_time);
                 }
             });
         }
     };
 }
-
 
 #[derive(Default, Serialize)]
 struct SystemStats {
@@ -62,15 +65,15 @@ fn main() {
         }
     };
 
-    stat_updater!(stats, Duration::from_secs(1), get_ram_info, ram);
-    stat_updater!(stats, Duration::from_secs(5), get_disk_info, disk);
-    stat_updater!(stats, Duration::from_secs(1), get_sys_temperatures, temperature);
-    stat_updater!(stats, Duration::from_secs(600), get_weather, weather);
-    stat_updater!(stats, Duration::from_millis(500), get_load_avg, loadavg);
-    stat_updater!(stats, Duration::from_secs(1), get_volume, volume);
-    stat_updater!(stats, Duration::from_secs(1), get_battery, battery);
-    stat_updater!(stats, Duration::from_secs(1), get_network_stats, network);
-    stat_updater!(stats, Duration::from_secs(1), get_brightness_stats, display);
+    stat_updater!(stats, Duration::from_secs(1), get_ram_info, ram, false);
+    stat_updater!(stats, Duration::from_secs(5), get_disk_info, disk, false);
+    stat_updater!(stats, Duration::from_secs(1), get_sys_temperatures, temperature, false);
+    stat_updater!(stats, Duration::from_secs(600), get_weather, weather, true);
+    stat_updater!(stats, Duration::from_millis(500), get_load_avg, loadavg, false);
+    stat_updater!(stats, Duration::from_secs(1), get_volume, volume, false);
+    stat_updater!(stats, Duration::from_secs(1), get_battery, battery, false);
+    stat_updater!(stats, Duration::from_secs(1), get_network_stats, network, false);
+    stat_updater!(stats, Duration::from_secs(1), get_brightness_stats, display, false);
 
     loop {
         {
