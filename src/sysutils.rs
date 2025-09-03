@@ -92,7 +92,7 @@ pub struct BatteryStats {
     pub watt: f32
 }
 
-pub fn get_ram_info () -> RamStats {
+pub fn get_ram_info () -> Option<RamStats> {
     let mut sys = System::new();
     sys.refresh_memory();
     let tm = sys.total_memory();
@@ -102,7 +102,7 @@ pub fn get_ram_info () -> RamStats {
     let mp = 100 * um / tm;
     let sp = 100 * us / ts;
 
-    RamStats {
+    Some(RamStats {
         total_memory: tm,
         used_memory: um,
         total_swap: ts,
@@ -113,11 +113,11 @@ pub fn get_ram_info () -> RamStats {
         swap_color: utils::get_color_gradient(60.0, 90.0, sp as f64, false),
         mem_warn: utils::get_warn_level(60.0, 90.0, mp as f64, false),
         swap_warn: utils::get_warn_level(60.0, 90.0, sp as f64, false)
-    }
+    })
 }
 
 
-pub fn get_disk_info () -> DiskStats {
+pub fn get_disk_info () -> Option<DiskStats> {
     let disks = Disks::new_with_refreshed_list();
     for disk in &disks {
         if (disk as &sysinfo::Disk).mount_point() == std::path::Path::new("/") {
@@ -126,7 +126,7 @@ pub fn get_disk_info () -> DiskStats {
                     let tos = (disk as &sysinfo::Disk).total_space();
                     let avs = (disk as &sysinfo::Disk).available_space();
                     let up = 100 - (avs * 100 / tos);
-                    return DiskStats {
+                    return Some(DiskStats {
                         // name_str.to_string(),
                         // mount_str.to_string(),
                         total_size: tos,
@@ -134,16 +134,16 @@ pub fn get_disk_info () -> DiskStats {
                         used_percent: up,
                         color: utils::get_color_gradient(60.0, 90.0, up as f64, false),
                         warn: utils::get_warn_level(60.0, 90.0, up as f64, false)
-                    }
+                    })
                 }
             }
         }
     }
     // SysUpdate::Error("Disk not found".to_string())
-    DiskStats { total_size: 0, used_size: 0, used_percent: 100, color: "#FF0000".to_string(), warn: 1.0 }
+    Some(DiskStats { total_size: 0, used_size: 0, used_percent: 100, color: "#FF0000".to_string(), warn: 1.0 })
 }
 
-pub fn get_sys_temperatures () -> TempStats {
+pub fn get_sys_temperatures () -> Option<TempStats> {
     let components = sysinfo::Components::new_with_refreshed_list();
     for component in &components {
         if component.label() == "Tctl" {
@@ -153,48 +153,48 @@ pub fn get_sys_temperatures () -> TempStats {
                                          if temp < 90.0 { "" } else
                                          if temp < 95.0 { "" } else { "" };
                 let color = utils::get_color_gradient(80.0, 99.0, temp as f64, false);
-                return TempStats {
+                return Some(TempStats {
                     sensor: component.label().into(),
                     value: temp,
                     color: Some(color),
                     icon: icon.into(),
                     warn: utils::get_warn_level(80.0, 99.0, temp as f64, false)
-                };
+                });
             } else {
-                return TempStats {
+                return Some(TempStats {
                     sensor: component.label().into(),
                     value: 0.0,
                     color: None,
                     icon: "󱔱".into(),
                     warn: 0.0
-                };
+                });
             }
         }
     }
-    TempStats {
+    Some(TempStats {
         sensor: "".into(),
         value: 0.0,
         color: None,
         icon: "󱔱".into(),
         warn: 0.0
-    }
+    })
 }
 
 
-pub fn get_volume () -> VolumeStats {
+pub fn get_volume () -> Option<VolumeStats> {
     let output = Command::new("/home/vncnz/.config/eww/scripts/volume.sh").arg("json").output();
     let stdout = String::from_utf8(output.unwrap().stdout).unwrap();
     // println!("\n{:?}", stdout);
     let vol: Result<VolumeObj, _> = serde_json::from_str(&stdout);
     if let Ok(volume) = vol {
-        return VolumeStats {
+        return Some(VolumeStats {
             color: utils::get_color_gradient(40.0, 100.0, volume.value as f64, false),
             icon: volume.icon,
             value: volume.value,
             clazz: volume.clazz
-        }
+        })
     } else {
-        VolumeStats::default()
+        Some(VolumeStats::default())
     }
 }
 
@@ -245,7 +245,7 @@ static CORE_COUNT: Lazy<usize> = Lazy::new(|| {
         .unwrap_or(1)
 });
 
-pub fn get_load_avg() -> AvgLoadStats {
+pub fn get_load_avg() -> Option<AvgLoadStats> {
     /* if unsafe { N_CPU } == 0 {
         unsafe { N_CPU = std::fs::read_to_string("/proc/cpuinfo")
             .map(|contents| {
@@ -273,26 +273,26 @@ pub fn get_load_avg() -> AvgLoadStats {
         // println!("0.5*{incrementing_factor} + 1.0*{absolute_factor} = {overall_factor}");
         let color = utils::get_color_gradient(0.0, 1.0, overall_factor, false);
 
-        AvgLoadStats {
+        Some(AvgLoadStats {
             m1: m1,
             m5: m5,
             m15: m15,
             ncpu: *CORE_COUNT,
             warn: overall_factor,
             color: color
-        }
+        })
     } else {
-        AvgLoadStats::default()
+        Some(AvgLoadStats::default())
     }
 }
 
 use battery::{Manager, State};
 
-pub fn get_battery() -> BatteryStats {
+pub fn get_battery() -> Option<BatteryStats> {
     let manager = match Manager::new() {
         Ok(m) => m,
         Err(_) => {
-            return BatteryStats {
+            return Some(BatteryStats {
                 percentage: 0,
                 capacity: 0.0,
                 eta: None,
@@ -300,14 +300,14 @@ pub fn get_battery() -> BatteryStats {
                 icon: "󰂑".to_string(),
                 color: None,
                 watt: 0.0
-            }
+            })
         }
     };
 
     let batteries = manager.batteries();
 
     if batteries.is_err() {
-        return BatteryStats {
+        return Some(BatteryStats {
             percentage: 0,
             capacity: 0.0,
             eta: None,
@@ -315,7 +315,7 @@ pub fn get_battery() -> BatteryStats {
             icon: "".to_string(),
             color: None,
             watt: 0.0
-        };
+        });
     }
 
     if let Some(Ok(battery)) = batteries.unwrap().next() {
@@ -361,7 +361,7 @@ pub fn get_battery() -> BatteryStats {
 
         let color = Some(utils::get_color_gradient(20.0, 70.0, percentage as f64, true));
 
-        BatteryStats {
+        Some(BatteryStats {
             percentage,
             capacity,
             eta,
@@ -369,9 +369,9 @@ pub fn get_battery() -> BatteryStats {
             icon,
             color,
             watt
-        }
+        })
     } else {
-        BatteryStats {
+        Some(BatteryStats {
             percentage: 0,
             capacity: 0.0,
             eta: None,
@@ -379,7 +379,7 @@ pub fn get_battery() -> BatteryStats {
             icon: "".to_string(),
             color: None,
             watt: 0.0
-        }
+        })
     }
 }
 

@@ -25,9 +25,9 @@ macro_rules! stat_updater { // New version, standby-proof!
                     if run_now {
                         let value = $getter();
                         if let Ok(mut data) = stats.lock() {
+                            if value.is_some() { last_update = Utc::now(); }
                             data.$field = value;
                         }
-                        last_update = Utc::now();
                     }
                     std::thread::sleep(sleep_time);
                 }
@@ -38,13 +38,13 @@ macro_rules! stat_updater { // New version, standby-proof!
 
 #[derive(Default, Serialize)]
 struct SystemStats {
-    ram: RamStats,
-    disk: DiskStats,
-    temperature: TempStats,
+    ram: Option<RamStats>,
+    disk: Option<DiskStats>,
+    temperature: Option<TempStats>,
     weather: Option<WeatherStats>,
-    loadavg: AvgLoadStats,
-    volume: VolumeStats,
-    battery: BatteryStats,
+    loadavg: Option<AvgLoadStats>,
+    volume: Option<VolumeStats>,
+    battery: Option<BatteryStats>,
     network: Option<NetworkStats>,
     display: Option<EmbeddedDisplayStats>,
     written_at: u64,
