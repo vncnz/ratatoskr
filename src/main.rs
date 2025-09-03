@@ -2,6 +2,7 @@ use serde::Serialize;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
+use chrono::Utc;
 
 mod utils;
 use utils::*;
@@ -14,16 +15,19 @@ macro_rules! stat_updater { // New version, standby-proof!
         {
             let stats = Arc::clone(&$stats);
             thread::spawn(move || {
-                let mut last_update = Instant::now() - $interval;
+                let mut last_update = Utc::now() - $interval;
                 let sleep_time = if $check_sleep { std::cmp::min($interval, Duration::from_secs(1)) } else { $interval };
                 loop {
-                    let run_now = if $check_sleep { last_update.elapsed() >= $interval } else { true };
+                    let run_now = if $check_sleep { Utc::now() >= last_update + $interval } else { true };
+                    /* if $check_sleep {
+                        println!("{:?} {:?}", Utc::now(), last_update + $interval);
+                    } */
                     if run_now {
                         let value = $getter();
                         if let Ok(mut data) = stats.lock() {
                             data.$field = value;
                         }
-                        last_update = Instant::now();
+                        last_update = Utc::now();
                     }
                     std::thread::sleep(sleep_time);
                 }
