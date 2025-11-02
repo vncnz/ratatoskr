@@ -4,6 +4,10 @@ use std::thread;
 use std::time::{Duration, Instant};
 use chrono::Utc;
 
+use std::os::unix::net::UnixDatagram;
+use std::path::Path;
+use std::fs;
+
 mod utils;
 use utils::*;
 
@@ -53,7 +57,8 @@ struct SystemStats {
 
 fn main() {
     let output_path = "/tmp/ratatoskr.json";
-    let output_niri_path = "/tmp/windows.json";
+    let sock_path = "/tmp/ratatoskr.sock";
+    // let output_niri_path = "/tmp/windows.json";
     let stats = Arc::new(Mutex::new(SystemStats::default()));
 
     let niristate_result = get_niri_situation();
@@ -79,6 +84,12 @@ fn main() {
     stat_updater!(stats, Duration::from_secs(1), get_network_stats, network, false);
     stat_updater!(stats, Duration::from_secs(1), get_brightness_stats, display, false);
 
+    if Path::new(sock_path).exists() {
+        fs::remove_file(sock_path).ok();
+    }
+
+    let sock = UnixDatagram::bind(sock_path).expect("bind fallita");
+
     loop {
         {
             if let Ok(mut data) = stats.lock() {
@@ -89,6 +100,9 @@ fn main() {
             if let Err(e) = write_json_atomic(output_path, &*data) {
                 eprintln!("Failed to write sysinfo JSON: {e}");
             }
+
+            let json = serde_json::to_string(&*data).unwrap();
+            sock.send_to(json.as_bytes(), sock_path).ok();
 
             if let Some(st) = &niristate {
                 let niridata = st.lock().unwrap();
