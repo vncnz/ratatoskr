@@ -88,7 +88,7 @@ fn main() {
         fs::remove_file(sock_path).ok();
     }
 
-    let sock = UnixDatagram::bind(sock_path).expect("bind fallita");
+    let sock = UnixDatagram::unbound().unwrap();
 
     loop {
         {
@@ -102,7 +102,8 @@ fn main() {
             }
 
             let json = serde_json::to_string(&*data).unwrap();
-            sock.send_to(json.as_bytes(), sock_path).ok();
+            // sock.send_to(json.as_bytes(), sock_path).ok();
+            let _ = sock.send_to(json.as_bytes(), sock_path);
 
             /* if let Some(st) = &niristate {
                 let niridata = st.lock().unwrap();
