@@ -61,7 +61,7 @@ fn main() {
     // let output_niri_path = "/tmp/windows.json";
     let stats = Arc::new(Mutex::new(SystemStats::default()));
 
-    let niristate_result = get_niri_situation();
+    /* let niristate_result = get_niri_situation();
     let niristate: Option<Arc<Mutex<niri_ipc::state::EventStreamState>>>;
     match niristate_result {
         Ok(l) => {
@@ -72,7 +72,7 @@ fn main() {
             eprintln!("Read error: {e}");
             niristate = None;
         }
-    };
+    }; */
 
     stat_updater!(stats, Duration::from_secs(1), get_ram_info, ram, false);
     stat_updater!(stats, Duration::from_secs(5), get_disk_info, disk, false);
@@ -104,12 +104,12 @@ fn main() {
             let json = serde_json::to_string(&*data).unwrap();
             sock.send_to(json.as_bytes(), sock_path).ok();
 
-            if let Some(st) = &niristate {
+            /* if let Some(st) = &niristate {
                 let niridata = st.lock().unwrap();
                 if let Err(e) = write_niri_json_atomic(output_niri_path, &*niridata) {
                     eprintln!("Failed to write niri JSON: {e}");
                 }
-            }
+            } */
         }
         thread::sleep(Duration::from_millis(500));
     }
