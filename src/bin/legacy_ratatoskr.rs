@@ -8,11 +8,8 @@ use std::os::unix::net::UnixDatagram;
 use std::path::Path;
 use std::fs;
 
-mod utils;
-use utils::*;
-
-mod sysutils;
-use sysutils::*;
+use ratatoskr::{SystemStats, utils::*};
+use ratatoskr::sysutils::*;
 
 macro_rules! stat_updater { // New version, standby-proof!
     ($stats:expr, $interval:expr, $getter:expr, $field:ident, $check_sleep:expr) => {
@@ -40,24 +37,10 @@ macro_rules! stat_updater { // New version, standby-proof!
     };
 }
 
-#[derive(Default, Serialize)]
-struct SystemStats {
-    ram: Option<RamStats>,
-    disk: Option<DiskStats>,
-    temperature: Option<TempStats>,
-    weather: Option<WeatherStats>,
-    loadavg: Option<AvgLoadStats>,
-    volume: Option<VolumeStats>,
-    battery: Option<BatteryStats>,
-    network: Option<NetworkStats>,
-    display: Option<EmbeddedDisplayStats>,
-    written_at: u64,
-    metronome: bool
-}
+
 
 fn main() {
     let output_path = "/tmp/ratatoskr.json";
-    let sock_path = "/tmp/ratatoskr.sock";
     // let output_niri_path = "/tmp/windows.json";
     let stats = Arc::new(Mutex::new(SystemStats::default()));
 
@@ -73,7 +56,6 @@ fn main() {
             niristate = None;
         }
     }; */
-
     stat_updater!(stats, Duration::from_secs(1), get_ram_info, ram, false);
     stat_updater!(stats, Duration::from_secs(5), get_disk_info, disk, false);
     stat_updater!(stats, Duration::from_secs(1), get_sys_temperatures, temperature, false);
@@ -84,13 +66,6 @@ fn main() {
     stat_updater!(stats, Duration::from_secs(1), get_network_stats, network, false);
     stat_updater!(stats, Duration::from_secs(1), get_brightness_stats, display, false);
 
-    if Path::new(sock_path).exists() {
-        fs::remove_file(sock_path).ok();
-    }
-
-    let sock = UnixDatagram::unbound().unwrap();
-    let mut was_disconnected = false;
-
     loop {
         {
             if let Ok(mut data) = stats.lock() {
@@ -100,26 +75,6 @@ fn main() {
             let data = stats.lock().unwrap();
             if let Err(e) = write_json_atomic(output_path, &*data) {
                 eprintln!("Failed to write sysinfo JSON: {e}");
-            }
-
-            let json = serde_json::to_string(&*data).unwrap();
-            // sock.send_to(json.as_bytes(), sock_path).ok();
-            let sent = sock.send_to(json.as_bytes(), sock_path);
-            match sent {
-                Ok(_) => {
-                    if was_disconnected {
-                        println!("Reconnected!");
-                    }
-                    was_disconnected = false;
-                },
-                Err(_) => {
-
-                    if !was_disconnected {
-                        println!("Disconnected!");
-                    }
-                    was_disconnected = true;
-                }
-                
             }
 
             /* if let Some(st) = &niristate {

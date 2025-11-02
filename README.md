@@ -11,3 +11,12 @@ The aim of this project is to collect some metrics and write them to a single js
 - Add warning flag everywhere (ram, disk, temp, etc)
 - Add network infos
 - Add brightness infos
+
+# News
+The project contains now two variants of Ratatoskr: legacy-ratatoskr and sock-ratatoskr
+
+## legacy-ratatoskr
+It's the legacy version of Ratatoskr, who writes the file /tmp/ratatoskr.json
+
+## sock-ratatoskr
+It's the new version of Ratatoskr, who sends data through a socket
