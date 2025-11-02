@@ -89,6 +89,7 @@ fn main() {
     }
 
     let sock = UnixDatagram::unbound().unwrap();
+    let mut was_disconnected = false;
 
     loop {
         {
@@ -103,7 +104,23 @@ fn main() {
 
             let json = serde_json::to_string(&*data).unwrap();
             // sock.send_to(json.as_bytes(), sock_path).ok();
-            let _ = sock.send_to(json.as_bytes(), sock_path);
+            let sent = sock.send_to(json.as_bytes(), sock_path);
+            match sent {
+                Ok(_) => {
+                    if was_disconnected {
+                        println!("Reconnected!");
+                    }
+                    was_disconnected = false;
+                },
+                Err(_) => {
+
+                    if !was_disconnected {
+                        println!("Disconnected!");
+                    }
+                    was_disconnected = true;
+                }
+                
+            }
 
             /* if let Some(st) = &niristate {
                 let niridata = st.lock().unwrap();
