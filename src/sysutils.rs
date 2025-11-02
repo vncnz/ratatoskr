@@ -100,20 +100,36 @@ pub fn get_ram_info () -> Option<RamStats> {
     let ts = sys.total_swap();
     let us = sys.used_swap();
     let mp = 100 * um / tm;
-    let sp = 100 * us / ts;
 
-    Some(RamStats {
-        total_memory: tm,
-        used_memory: um,
-        total_swap: ts,
-        used_swap: us,
-        mem_percent: mp,
-        swap_percent: sp,
-        mem_color: utils::get_color_gradient(60.0, 90.0, mp as f64, false),
-        swap_color: utils::get_color_gradient(60.0, 90.0, sp as f64, false),
-        mem_warn: utils::get_warn_level(60.0, 90.0, mp as f64, false),
-        swap_warn: utils::get_warn_level(60.0, 90.0, sp as f64, false)
-    })
+    if ts > 0 {
+        let sp = 100 * us / ts;
+
+        Some(RamStats {
+            total_memory: tm,
+            used_memory: um,
+            total_swap: ts,
+            used_swap: us,
+            mem_percent: mp,
+            swap_percent: sp,
+            mem_color: utils::get_color_gradient(60.0, 90.0, mp as f64, false),
+            swap_color: utils::get_color_gradient(60.0, 90.0, sp as f64, false),
+            mem_warn: utils::get_warn_level(60.0, 90.0, mp as f64, false),
+            swap_warn: utils::get_warn_level(60.0, 90.0, sp as f64, false)
+        })
+    } else {
+        Some(RamStats {
+            total_memory: tm,
+            used_memory: um,
+            total_swap: 0,
+            used_swap: 0,
+            mem_percent: mp,
+            swap_percent: 0,
+            mem_color: utils::get_color_gradient(60.0, 90.0, mp as f64, false),
+            swap_color: utils::get_color_gradient(0.0, 1.0, 0.0, false),
+            mem_warn: utils::get_warn_level(60.0, 90.0, mp as f64, false),
+            swap_warn: 0.0
+        })
+    }
 }
 
 
