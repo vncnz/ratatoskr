@@ -11,13 +11,66 @@ use std::fs;
 use ratatoskr::{SystemStats, utils::*};
 use ratatoskr::sysutils::*;
 
-const SOCK_PATH: &str = "/tmp/ratatoskr.sock";
+// const SOCK_PATH: &str = "/tmp/ratatoskr.sock";
+
+use std::sync::{mpsc};
+use std::os::unix::net::{UnixListener, UnixStream};
+use std::io::Write;
+
+pub fn start_socket_dispatcher(
+    sock_path: &str,
+) -> std::io::Result<mpsc::Sender<String>> {
+    let _ = fs::remove_file(sock_path);
+    let listener = UnixListener::bind(sock_path)?;
+    listener.set_nonblocking(true)?;
+    let clients = Arc::new(Mutex::new(Vec::<UnixStream>::new()));
+
+    let (tx, rx) = mpsc::channel::<String>();
+    let clients_accept = Arc::clone(&clients);
+
+    // Thread che accetta nuovi client
+    thread::spawn(move || {
+        loop {
+            match listener.accept() {
+                Ok((stream, _)) => {
+                    println!("Nuovo client connesso");
+                    stream.set_nonblocking(true).ok();
+                    clients_accept.lock().unwrap().push(stream);
+                }
+                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    thread::sleep(std::time::Duration::from_millis(100));
+                }
+                Err(e) => eprintln!("Errore accept: {e}"),
+            }
+        }
+    });
+
+    // Thread che invia i messaggi ai client
+    let clients_send = Arc::clone(&clients);
+    thread::spawn(move || {
+        for msg in rx {
+            // eprintln!("msg in rx {:?}", msg);
+            let mut lock = clients_send.lock().unwrap();
+            lock.retain_mut(|c| {
+                // eprintln!("lock.retain_mut");
+                if let Err(e) = c.write_all(msg.as_bytes()) {
+                    eprintln!("Client disconnesso ({e})");
+                    return false;
+                }
+                true
+            });
+        }
+    });
+
+    Ok(tx)
+}
+
 
 macro_rules! stat_updater { // New version, standby-proof!
-    ($stats:expr, $interval:expr, $getter:expr, $field:ident, $check_sleep:expr, $sock:expr, $name:expr) => {
+    ($stats:expr, $interval:expr, $getter:expr, $field:ident, $check_sleep:expr, $tx:expr, $name:expr) => {
         {
             let stats = Arc::clone(&$stats);
-            let sock: Arc<Mutex<UnixDatagram>> = Arc::clone($sock);
+            let tx = $tx.clone();
             thread::spawn(move || {
                 let mut last_update = Utc::now() - $interval;
                 let sleep_time = if $check_sleep { std::cmp::min($interval, Duration::from_secs(1)) } else { $interval };
@@ -29,19 +82,27 @@ macro_rules! stat_updater { // New version, standby-proof!
                     if run_now {
                         let value = $getter();
                         if let Ok(mut data) = stats.lock() {
-                            let mut warn = 0.0;
                             if value.is_some() {
                                 last_update = Utc::now();
-                                warn = value.as_ref().unwrap().warn;
+                                // warn = value.as_ref().unwrap().warn;
+                                // icon = value.as_ref().unwrap().icon;
+                                let json_val = serde_json::to_value(&value).unwrap_or_default();
+                                let warn = json_val.get("warn").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                                let icon = json_val.get("icon").and_then(|v| v.as_str()).unwrap_or("");
+
+                                let msg = serde_json::json!({
+                                    "resource": $name,
+                                    "warning": warn,
+                                    "icon": icon,
+                                    "data": serde_json::to_value(&value).unwrap()
+                                });
+                                let json = msg.to_string();
+                                // let json = serde_json::to_string(&value).unwrap();
+                                if tx.clone().unwrap().send(json).is_err() {
+                                    eprintln!("Dispatcher terminato, chiudo thread di {}", $name);
+                                    break;
+                                }
                             }
-                            let msg = serde_json::json!({
-                                "resource": $name,
-                                "warning": warn,
-                                "data": serde_json::to_value(&value).unwrap()
-                            });
-                            let json = msg.to_string();
-                            // let json = serde_json::to_string(&value).unwrap();
-                            let sent = sock.lock().unwrap().send_to(json.as_bytes(), SOCK_PATH);
 
                             data.$field = value;
                         }
@@ -54,7 +115,7 @@ macro_rules! stat_updater { // New version, standby-proof!
 }
 
 fn main() {
-    let output_path = "/tmp/ratatoskr.json";
+    // let output_path = "/tmp/ratatoskr.json";
     // let output_niri_path = "/tmp/windows.json";
     let stats = Arc::new(Mutex::new(SystemStats::default()));
 
@@ -71,63 +132,46 @@ fn main() {
         }
     }; */
 
-    if Path::new(SOCK_PATH).exists() {
+    let tx = start_socket_dispatcher("/tmp/ratatoskr.sock").ok();
+
+    /*if Path::new(SOCK_PATH).exists() {
         fs::remove_file(SOCK_PATH).ok();
     }
 
-    let sock = UnixDatagram::unbound().unwrap();
-    let mut was_disconnected = false;
+    let sock = UnixDatagram::unbound().unwrap(); */
+    // let mut was_disconnected = false;
 
-    let msock = Arc::new(Mutex::new(UnixDatagram::unbound().expect("Error msock")));
+    // let msock = Arc::new(Mutex::new(UnixDatagram::unbound().expect("Error msock")));
 
-    stat_updater!(stats, Duration::from_secs(1), get_ram_info, ram, false, &msock, "memory");
-    stat_updater!(stats, Duration::from_secs(5), get_disk_info, disk, false, &msock, "disk");
-    stat_updater!(stats, Duration::from_secs(1), get_sys_temperatures, temperature, false, &msock, "temperature");
-    stat_updater!(stats, Duration::from_secs(600), get_weather, weather, true, &msock, "weather");
-    stat_updater!(stats, Duration::from_millis(500), get_load_avg, loadavg, false, &msock, "loadavg");
-    stat_updater!(stats, Duration::from_secs(1), get_volume, volume, false, &msock, "volume");
-    stat_updater!(stats, Duration::from_secs(1), get_battery, battery, false, &msock, "battery");
-    stat_updater!(stats, Duration::from_secs(1), get_network_stats, network, false, &msock, "network");
-    stat_updater!(stats, Duration::from_secs(1), get_brightness_stats, display, false, &msock, "brightness");
+    stat_updater!(stats, Duration::from_secs(1), get_ram_info, ram, false, &tx, "memory");
+    stat_updater!(stats, Duration::from_secs(5), get_disk_info, disk, false, &tx, "disk");
+    stat_updater!(stats, Duration::from_secs(1), get_sys_temperatures, temperature, false, &tx, "temperature");
+    stat_updater!(stats, Duration::from_secs(600), get_weather, weather, true, &tx, "weather");
+    stat_updater!(stats, Duration::from_millis(500), get_load_avg, loadavg, false, &tx, "loadavg");
+    stat_updater!(stats, Duration::from_secs(1), get_volume, volume, false, &tx, "volume");
+    stat_updater!(stats, Duration::from_secs(1), get_battery, battery, false, &tx, "battery");
+    stat_updater!(stats, Duration::from_secs(1), get_network_stats, network, false, &tx, "network");
+    stat_updater!(stats, Duration::from_secs(1), get_brightness_stats, display, false, &tx, "brightness");
 
     loop {
-        {
-            if let Ok(mut data) = stats.lock() {
-                data.written_at = get_unix_time();
-                data.metronome = !data.metronome;
-            }
-            let data = stats.lock().unwrap();
-            /* if let Err(e) = write_json_atomic(output_path, &*data) {
-                eprintln!("Failed to write sysinfo JSON: {e}");
-            } */
-
-            let json = serde_json::to_string(&*data).unwrap();
-            // sock.send_to(json.as_bytes(), sock_path).ok();
-            let sent = sock.send_to(json.as_bytes(), SOCK_PATH);
-            match sent {
-                Ok(_) => {
-                    if was_disconnected {
-                        println!("Reconnected!");
-                    }
-                    was_disconnected = false;
-                },
-                Err(_) => {
-
-                    if !was_disconnected {
-                        println!("Disconnected!");
-                    }
-                    was_disconnected = true;
-                }
-                
-            }
-
-            /* if let Some(st) = &niristate {
-                let niridata = st.lock().unwrap();
-                if let Err(e) = write_niri_json_atomic(output_niri_path, &*niridata) {
-                    eprintln!("Failed to write niri JSON: {e}");
-                }
-            } */
+        if let Ok(mut data) = stats.lock() {
+            data.written_at = get_unix_time();
+            data.metronome = !data.metronome;
         }
+        // let data = stats.lock().unwrap();
+        /* if let Err(e) = write_json_atomic(output_path, &*data) {
+            eprintln!("Failed to write sysinfo JSON: {e}");
+        } */
+
+        // let json = serde_json::to_string(&*data).unwrap();
+        
+
+        /* if let Some(st) = &niristate {
+            let niridata = st.lock().unwrap();
+            if let Err(e) = write_niri_json_atomic(output_niri_path, &*niridata) {
+                eprintln!("Failed to write niri JSON: {e}");
+            }
+        } */
         thread::sleep(Duration::from_millis(500));
     }
 }
