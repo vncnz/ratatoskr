@@ -80,11 +80,11 @@ fn main() {
 
     let msock = Arc::new(Mutex::new(UnixDatagram::unbound().expect("Error msock")));
 
-    stat_updater!(stats, Duration::from_secs(2), get_ram_info, ram, false, &msock, "memory");
+    stat_updater!(stats, Duration::from_secs(1), get_ram_info, ram, false, &msock, "memory");
     stat_updater!(stats, Duration::from_secs(5), get_disk_info, disk, false, &msock, "disk");
     stat_updater!(stats, Duration::from_secs(1), get_sys_temperatures, temperature, false, &msock, "temperature");
     stat_updater!(stats, Duration::from_secs(600), get_weather, weather, true, &msock, "weather");
-    stat_updater!(stats, Duration::from_millis(1500), get_load_avg, loadavg, false, &msock, "loadavg");
+    stat_updater!(stats, Duration::from_millis(500), get_load_avg, loadavg, false, &msock, "loadavg");
     stat_updater!(stats, Duration::from_secs(1), get_volume, volume, false, &msock, "volume");
     stat_updater!(stats, Duration::from_secs(1), get_battery, battery, false, &msock, "battery");
     stat_updater!(stats, Duration::from_secs(1), get_network_stats, network, false, &msock, "network");
