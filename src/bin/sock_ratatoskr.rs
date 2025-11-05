@@ -1,4 +1,5 @@
 use serde::Serialize;
+use serde_json::value;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -17,8 +18,36 @@ use std::sync::{mpsc};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::io::Write;
 
+/*
+pub ram: Option<RamStats>,
+    pub disk: Option<DiskStats>,
+    pub temperature: Option<TempStats>,
+    pub weather: Option<WeatherStats>,
+    pub loadavg: Option<AvgLoadStats>,
+    pub volume: Option<VolumeStats>,
+    pub battery: Option<BatteryStats>,
+    pub network: Option<NetworkStats>,
+    pub display: Option<EmbeddedDisplayStats>,
+    pub written_at: u64,
+    pub metronome: bool */
+
+fn send_burst (s: &SystemStats, tx: mpsc::Sender<String>) {
+    // Sending only resources with a pooling time longer than 1s
+    let fields: [(&str, serde_json::Value); 2] = [
+        ("disk", serde_json::json!(s.disk)),
+        ("weather", serde_json::json!(s.weather)),
+    ];
+
+    for (key, value) in fields {
+        // println!("{} = {}", key, value);
+        send(key.to_string(), value, Some(tx.clone()));
+    }
+    println!("Burst sent");
+}
+
 pub fn start_socket_dispatcher(
     sock_path: &str,
+    s: Arc<Mutex<SystemStats>>
 ) -> std::io::Result<mpsc::Sender<String>> {
     let _ = fs::remove_file(sock_path);
     let listener = UnixListener::bind(sock_path)?;
@@ -27,6 +56,7 @@ pub fn start_socket_dispatcher(
 
     let (tx, rx) = mpsc::channel::<String>();
     let clients_accept = Arc::clone(&clients);
+    let tx_clone = tx.clone();
 
     // Thread che accetta nuovi client
     thread::spawn(move || {
@@ -36,6 +66,9 @@ pub fn start_socket_dispatcher(
                     println!("Nuovo client connesso");
                     stream.set_nonblocking(true).ok();
                     clients_accept.lock().unwrap().push(stream);
+                    if let Ok(data) = s.lock() {
+                        send_burst(&data, tx_clone.clone());
+                    }
                 }
                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                     thread::sleep(std::time::Duration::from_millis(100));
@@ -65,6 +98,35 @@ pub fn start_socket_dispatcher(
     Ok(tx)
 }
 
+fn send (name: String, value: serde_json::Value, tx: Option<mpsc::Sender<String>>) -> bool {
+    match tx {
+        Some(ttx) => {
+            let json_val = serde_json::to_value(&value).unwrap_or_default();
+            let warn = json_val.get("warn").and_then(|v| v.as_f64()).unwrap_or(0.0);
+            let icon = json_val.get("icon").and_then(|v| v.as_str()).unwrap_or("");
+
+            let msg = serde_json::json!({
+                "resource": name,
+                "warning": warn,
+                "icon": icon,
+                "data": serde_json::to_value(&value).unwrap()
+            });
+            let json = msg.to_string();
+            // let json = serde_json::to_string(&value).unwrap();
+    
+            if ttx.clone().send(json).is_err() {
+                false
+            } else {
+                true
+            }
+        },
+        _ => {
+            false
+        }
+    }
+
+}
+
 
 macro_rules! stat_updater { // New version, standby-proof!
     ($stats:expr, $interval:expr, $getter:expr, $field:ident, $check_sleep:expr, $tx:expr, $name:expr) => {
@@ -87,18 +149,7 @@ macro_rules! stat_updater { // New version, standby-proof!
                                 // warn = value.as_ref().unwrap().warn;
                                 // icon = value.as_ref().unwrap().icon;
                                 let json_val = serde_json::to_value(&value).unwrap_or_default();
-                                let warn = json_val.get("warn").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                                let icon = json_val.get("icon").and_then(|v| v.as_str()).unwrap_or("");
-
-                                let msg = serde_json::json!({
-                                    "resource": $name,
-                                    "warning": warn,
-                                    "icon": icon,
-                                    "data": serde_json::to_value(&value).unwrap()
-                                });
-                                let json = msg.to_string();
-                                // let json = serde_json::to_string(&value).unwrap();
-                                if tx.clone().unwrap().send(json).is_err() {
+                                if !send($name.to_string(), json_val, tx.clone()) {
                                     eprintln!("Dispatcher terminato, chiudo thread di {}", $name);
                                     break;
                                 }
@@ -132,7 +183,7 @@ fn main() {
         }
     }; */
 
-    let tx = start_socket_dispatcher("/tmp/ratatoskr.sock").ok();
+    let tx = start_socket_dispatcher("/tmp/ratatoskr.sock", stats.clone()).ok();
 
     /*if Path::new(SOCK_PATH).exists() {
         fs::remove_file(SOCK_PATH).ok();
@@ -143,7 +194,7 @@ fn main() {
 
     // let msock = Arc::new(Mutex::new(UnixDatagram::unbound().expect("Error msock")));
 
-    stat_updater!(stats, Duration::from_secs(1), get_ram_info, ram, false, &tx, "memory");
+    stat_updater!(stats, Duration::from_secs(1), get_ram_info, ram, false, &tx, "ram");
     stat_updater!(stats, Duration::from_secs(5), get_disk_info, disk, false, &tx, "disk");
     stat_updater!(stats, Duration::from_secs(1), get_sys_temperatures, temperature, false, &tx, "temperature");
     stat_updater!(stats, Duration::from_secs(600), get_weather, weather, true, &tx, "weather");
@@ -151,7 +202,10 @@ fn main() {
     stat_updater!(stats, Duration::from_secs(1), get_volume, volume, false, &tx, "volume");
     stat_updater!(stats, Duration::from_secs(1), get_battery, battery, false, &tx, "battery");
     stat_updater!(stats, Duration::from_secs(1), get_network_stats, network, false, &tx, "network");
-    stat_updater!(stats, Duration::from_secs(1), get_brightness_stats, display, false, &tx, "brightness");
+    stat_updater!(stats, Duration::from_secs(1), get_brightness_stats, display, false, &tx, "display");
+
+
+
 
     loop {
         if let Ok(mut data) = stats.lock() {
