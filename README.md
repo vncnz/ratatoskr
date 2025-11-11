@@ -1,22 +1,21 @@
-# ratatoskr
+# ratatoskr - ᚱᚨᛏᚨᛏᛟᛊᚲᚱ
 
-In Norse mythology, Ratatoskr is a squirrel that lives on the world tree, Yggdrasil. He is known for running up and down the tree, carrying messages, often insults, between the eagle perched at the top of the tree and the serpent Níðhöggr who dwells beneath one of the tree's roots.
+## About the name
 
-Please note that this is a personal project, for personal use, developed in my (not so much) free time. You'll not find clean code or a flexible, modular system here. You'll find lots of experiments, abandoned ideas, dead code, temporary hacks and workarounds. Oh, and last but not least, I'm just learning both Rust and RataTUI. You've been warned.
+In Norse mythology, Ratatoskr is a squirrel that lives on the world tree, Yggdrasil. He is known for running up and down the tree, carrying messages (often insults) between the eagle perched at the top of the tree and the serpent Níðhöggr who dwells beneath one of the tree's roots.
 
-# Purpose
-The aim of this project is to collect some metrics and write them to a single json file in a temporary directory. Every process can read this file, ensuring consistency and sync in data visualization between launcher and statusbar in my machine.
+## About this project
 
-# TODO
-- Add warning flag everywhere (ram, disk, temp, etc)
-- Add network infos
-- Add brightness infos
+The aim of this project is to collect some metrics and supply them to other processes. Every process can read this file, ensuring consistency and sync in data visualization between launcher and statusbar in my machine and keeping these processes free of a lot of code.
 
-# News
 The project contains now two variants of Ratatoskr: legacy-ratatoskr and sock-ratatoskr
 
 ## legacy-ratatoskr
-It's the legacy version of Ratatoskr, who writes the file /tmp/ratatoskr.json
+It's the legacy version of Ratatoskr, who writes all information in the file /tmp/ratatoskr.json
 
 ## sock-ratatoskr
-It's the new version of Ratatoskr, who sends data through a socket
+It's the new version of Ratatoskr, who sends data through a socket located in /tmp/ratatoskr.sock
+
+## Note
+
+Please note that this is a personal project, for personal use, developed in my (not so much) free time. You'll not find clean code or a flexible, modular system here. You'll find lots of experiments, abandoned ideas, dead code, temporary hacks and workarounds. Oh, and last but not least, I'm just learning both Rust and RataTUI. You've been warned.
