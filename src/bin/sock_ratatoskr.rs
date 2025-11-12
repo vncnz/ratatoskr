@@ -33,13 +33,34 @@ pub ram: Option<RamStats>,
 
 fn send_burst (s: &SystemStats, tx: mpsc::Sender<String>) {
     // Sending only resources with a pooling time longer than 1s
-    let fields: [(&str, serde_json::Value); 2] = [
+    let fields: [(&str, serde_json::Value); 9] = [
+        /*
+    stat_updater!(stats, Duration::from_secs(1), get_ram_info, ram, false, &tx, "ram");
+    stat_updater!(stats, Duration::from_secs(5), get_disk_info, disk, false, &tx, "disk");
+    stat_updater!(stats, Duration::from_secs(1), get_sys_temperatures, temperature, false, &tx, "temperature");
+    stat_updater!(stats, Duration::from_secs(600), get_weather, weather, true, &tx, "weather");
+    stat_updater!(stats, Duration::from_millis(500), get_load_avg, loadavg, false, &tx, "loadavg");
+    stat_updater!(stats, Duration::from_secs(1), get_volume, volume, false, &tx, "volume");
+    stat_updater!(stats, Duration::from_secs(1), get_battery, battery, false, &tx, "battery");
+    stat_updater!(stats, Duration::from_secs(1), get_network_stats, network, false, &tx, "network");
+    stat_updater!(stats, Duration::from_secs(1), get_brightness_stats, display, false, &tx, "display");
+        */
+        ("ram", serde_json::json!(s.ram)),
         ("disk", serde_json::json!(s.disk)),
+        ("temperature", serde_json::json!(s.temperature)),
         ("weather", serde_json::json!(s.weather)),
+        ("loadavg", serde_json::json!(s.loadavg)),
+        ("volume", serde_json::json!(s.volume)),
+        ("battery", serde_json::json!(s.battery)),
+        ("network", serde_json::json!(s.network)),
+        ("display", serde_json::json!(s.display)),
+        
     ];
 
+    // println!("{:?}", fields);
     for (key, value) in fields {
         // println!("{} = {}", key, value);
+        // println!("sending {key}");
         send(key.to_string(), value, Some(tx.clone()));
     }
     println!("Burst sent");
@@ -63,7 +84,7 @@ pub fn start_socket_dispatcher(
         loop {
             match listener.accept() {
                 Ok((stream, _)) => {
-                    println!("Nuovo client connesso");
+                    println!("New client connected");
                     stream.set_nonblocking(true).ok();
                     clients_accept.lock().unwrap().push(stream);
                     if let Ok(data) = s.lock() {
@@ -73,7 +94,7 @@ pub fn start_socket_dispatcher(
                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                     thread::sleep(std::time::Duration::from_millis(100));
                 }
-                Err(e) => eprintln!("Errore accept: {e}"),
+                Err(e) => eprintln!("Accept error: {e}"),
             }
         }
     });
@@ -87,7 +108,7 @@ pub fn start_socket_dispatcher(
             lock.retain_mut(|c| {
                 // eprintln!("lock.retain_mut");
                 if let Err(e) = c.write_all(msg.as_bytes()) {
-                    eprintln!("Client disconnesso ({e})");
+                    eprintln!("Disconnected client ({e})");
                     return false;
                 }
                 true
@@ -99,6 +120,7 @@ pub fn start_socket_dispatcher(
 }
 
 fn send (name: String, value: serde_json::Value, tx: Option<mpsc::Sender<String>>) -> bool {
+    // println!("Sending {}", name);
     match tx {
         Some(ttx) => {
             let json_val = serde_json::to_value(&value).unwrap_or_default();
