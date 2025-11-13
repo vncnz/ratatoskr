@@ -3,7 +3,7 @@ use serde_json::value;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
-use chrono::Utc;
+use chrono::{Utc,Local};
 
 use std::os::unix::net::UnixDatagram;
 use std::path::Path;
@@ -54,15 +54,18 @@ fn send_burst (s: &SystemStats, tx: mpsc::Sender<String>) {
         ("battery", serde_json::json!(s.battery)),
         ("network", serde_json::json!(s.network)),
         ("display", serde_json::json!(s.display)),
-        
     ];
+
+    // send("burst start".to_string(), value::Value::Null, Some(tx.clone()));
 
     // println!("{:?}", fields);
     for (key, value) in fields {
         // println!("{} = {}", key, value);
         // println!("sending {key}");
-        send(key.to_string(), value, Some(tx.clone()));
+        let _ = send(key.to_string(), value, Some(tx.clone()));
+        // println!("sent: {}", sent);
     }
+    // send("burst end".to_string(), value::Value::Null, Some(tx.clone()));
     println!("Burst sent");
 }
 
@@ -84,11 +87,13 @@ pub fn start_socket_dispatcher(
         loop {
             match listener.accept() {
                 Ok((stream, _)) => {
-                    println!("New client connected");
+                    println!("{} New client connected", chrono::Local::now().format("%H:%M:%S%.3f"));
                     stream.set_nonblocking(true).ok();
                     clients_accept.lock().unwrap().push(stream);
                     if let Ok(data) = s.lock() {
+                        // thread::sleep(Duration::from_millis(2000));
                         send_burst(&data, tx_clone.clone());
+                        // tx_clone.send("burst".into()).ok();
                     }
                 }
                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
@@ -105,9 +110,10 @@ pub fn start_socket_dispatcher(
         for msg in rx {
             // eprintln!("msg in rx {:?}", msg);
             let mut lock = clients_send.lock().unwrap();
+            // eprintln!("rx len {}, sending msg {:?}", lock.len(), msg);
             lock.retain_mut(|c| {
                 // eprintln!("lock.retain_mut");
-                if let Err(e) = c.write_all(msg.as_bytes()) {
+                if let Err(e) = c.write_all(format!("{}\n", msg).as_bytes()) {
                     eprintln!("Disconnected client ({e})");
                     return false;
                 }
@@ -120,7 +126,7 @@ pub fn start_socket_dispatcher(
 }
 
 fn send (name: String, value: serde_json::Value, tx: Option<mpsc::Sender<String>>) -> bool {
-    // println!("Sending {}", name);
+    // println!("{} Sending {}", Local::now().format("%Y-%m-%d %H:%M:%S%.3f"), name);
     match tx {
         Some(ttx) => {
             let json_val = serde_json::to_value(&value).unwrap_or_default();
@@ -233,6 +239,8 @@ fn main() {
         if let Ok(mut data) = stats.lock() {
             data.written_at = get_unix_time();
             data.metronome = !data.metronome;
+
+            // send_burst(&data, tx.clone().unwrap());
         }
         // let data = stats.lock().unwrap();
         /* if let Err(e) = write_json_atomic(output_path, &*data) {
