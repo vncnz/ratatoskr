@@ -16,6 +16,38 @@ It's the legacy version of Ratatoskr, who writes all information in the file /tm
 ## sock-ratatoskr
 It's the new version of Ratatoskr, who sends data through a socket located in /tmp/ratatoskr.sock
 
+Each message through the socket is send in following (JSON) format:
+```
+{
+    resource: String,
+    warning: f64,
+    icon: Option<String>,
+    data: {...stuff}
+}
+```
+
+The key `data' holds the original message collected for a specific resource, for example:
+
+```
+{
+    "resource":"temperature",
+    "warning":0.0,
+    "icon":"",
+    "data": {
+        "color":"#55FF00",
+        "icon":"",
+        "sensor":"Tctl",
+        "value":74.5,
+        "warn":0.0
+    }
+}
+```
+
+Keys `resource` and `warning` are always present, while icon and data are optional and depends on resource type.
+
+## Tips
+- You can check a socket output with following command: ```socat - UNIX-CONNECT:/tmp/ratatoskr.sock```
+
 ## Note
 
 Please note that this is a personal project, for personal use, developed in my (not so much) free time. You'll not find clean code or a flexible, modular system here. You'll find lots of experiments, abandoned ideas, dead code, temporary hacks and workarounds. Oh, and last but not least, I'm just learning both Rust and RataTUI. You've been warned.
