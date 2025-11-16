@@ -130,7 +130,7 @@ fn send (name: String, value: serde_json::Value, tx: Option<mpsc::Sender<String>
     match tx {
         Some(ttx) => {
             let json_val = serde_json::to_value(&value).unwrap_or_default();
-            let warn = json_val.get("warn").and_then(|v| v.as_f64()).unwrap_or(0.0);
+            let warn = json_val.get("warn").and_then(|v| v.as_f64()).unwrap_or(1.0);
             let icon = json_val.get("icon").and_then(|v| v.as_str()).unwrap_or("");
 
             let msg = serde_json::json!({
