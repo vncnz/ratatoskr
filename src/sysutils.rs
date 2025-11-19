@@ -164,7 +164,28 @@ pub fn get_weather () -> Option<WeatherStats> {
     // let weather: WeatherObj;
     if let Ok(mut weather) = serde_json::from_str::<WeatherStats>(&stdout) {
         weather.updated = Some(format!("{}", Utc::now().to_rfc3339()));
+        let mut temp_warn: f64 = 0.0;
+        if weather.temp > 28 {
+            temp_warn = f64::clamp(weather.temp as f64 / 36.0, 0.0, 1.0);
+        } else if weather.temp < 10 {
+            temp_warn = f64::clamp((10.0 - weather.temp as f64) / 10.0 , 0.0, 1.0);
+        }
+        match weather.text.as_str() {
+            "Overcast" => { temp_warn += 0.2; },
+            "Fog" => { temp_warn += 0.3; },
+            "Depositing rime fog" => { temp_warn += 0.3; },
+            "Rain (slight)" => { temp_warn += 0.2; },
+            "Rain (moderate)" => { temp_warn += 0.4; },
+            "Rain (heavy)" => { temp_warn += 0.6; },
+            "Thunderstorm" => { temp_warn += 0.8; },
+
+            _ => {}
+        }
+        weather.warn = Some(temp_warn);
         return Some(weather)
+    } else {
+        eprintln!("Error weather");
+        eprintln!("{}", stdout);
     }
     // WeatherStats::default()
     return None
