@@ -68,7 +68,7 @@ pub struct WeatherStats {
     pub locality: String,
     pub humidity: u8,
     pub updated: Option<String>,
-    pub warn: f64
+    pub warn: Option<f64>
 }
 
 #[derive(Default, Serialize)]
