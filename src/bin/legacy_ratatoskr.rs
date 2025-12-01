@@ -1,12 +1,7 @@
-use serde::Serialize;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use chrono::Utc;
-
-use std::os::unix::net::UnixDatagram;
-use std::path::Path;
-use std::fs;
 
 use ratatoskr::{SystemStats, utils::*};
 use ratatoskr::sysutils::*;

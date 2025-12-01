@@ -1,5 +1,4 @@
-use serde::{Serialize,Deserialize};
-use std::{process::Command, time::Instant};
+use std::process::Command;
 
 use sysinfo::{Disks, System};
 use chrono::Utc;
@@ -288,7 +287,7 @@ pub fn get_battery() -> Option<BatteryStats> {
 
         let eta = match battery.time_to_empty().or(battery.time_to_full()) {
             Some(t) => Some((t.value as f32) / 60.0),  // Converte da secondi a minuti
-            None => None,
+            _ => None,
         };
 
         let state = match battery.state() {
@@ -461,12 +460,11 @@ pub fn get_brightness_stats() -> Option<EmbeddedDisplayStats> {
 
 
 use niri_ipc::{
-    socket::{Socket, SOCKET_PATH_ENV},
+    socket::SOCKET_PATH_ENV,
     state::{EventStreamState, EventStreamStatePart},
     Event, Request,
 };
 use std::env;
-use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
 use std::sync::{Arc, Mutex};
@@ -535,14 +533,6 @@ pub fn get_niri_situation () -> std::io::Result<Arc<Mutex<EventStreamState>>> {
 
     Ok(state)
 }
-
-
-use libpulse_binding as pulse;
-use pulse::callbacks::ListResult;
-use pulse::context::Context;
-use pulse::mainloop::standard::{Mainloop, IterateResult};
-use pulse::proplist::Proplist;
-use std::thread;
 
 #[derive(Debug, Clone, Default)]
 pub struct AudioState {

@@ -1,18 +1,12 @@
-use serde::Serialize;
-use serde_json::value;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::{Duration, Instant};
-use chrono::{Utc,Local};
+use std::time::Duration;
+use chrono::Utc;
 
-use std::os::unix::net::UnixDatagram;
-use std::path::Path;
 use std::fs;
 
-use ratatoskr::{SystemStats, utils::*};
+use ratatoskr::SystemStats;
 use ratatoskr::sysutils::*;
-
-// const SOCK_PATH: &str = "/tmp/ratatoskr.sock";
 
 use std::sync::{mpsc};
 use std::os::unix::net::{UnixListener, UnixStream};
