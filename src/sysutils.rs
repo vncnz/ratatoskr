@@ -364,10 +364,10 @@ pub fn get_network_stats() -> Option<NetworkStats> {
         let iface = parts[0].to_string();
         let ip = get_ip(&iface);
         let conn_type = parts[1].to_string();
-        let mut icon = if conn_type == "ethernet" { "󰈀" } else { "󰞃" };
+        // let mut icon = if conn_type == "ethernet" { "󰈀" } else { "󰞃" };
         let mut color: Option<String> = None;
         let mut warn = 0.0;
-        let ssid = if conn_type == "wifi" {
+        if conn_type == "wifi" {
             // SSID
             let out = Command::new("nmcli")
                 .args(["-t", "-f", "ACTIVE,SSID,SIGNAL", "dev", "wifi"])
@@ -377,6 +377,7 @@ pub fn get_network_stats() -> Option<NetworkStats> {
             for wifi_line in lines.lines() {
                 let wifi_parts: Vec<&str> = wifi_line.split(':').collect();
                 let signal = wifi_parts[2].parse().ok();
+                let mut icon = "󰞃";
                 if let Some(sig) = signal {
                     if sig < 15 { icon = "󰢿"; }
                     else if sig < 30 { icon = "󰢼"; }
@@ -399,20 +400,18 @@ pub fn get_network_stats() -> Option<NetworkStats> {
                     });
                 }
             }
-            None
-        } else {
-            Some(NetworkStats {
+        } else if conn_type == "ethernet" {
+            return Some(NetworkStats {
                 iface,
                 conn_type,
                 ssid: None,
                 signal: None,
                 ip,
-                icon: icon.to_string(),
+                icon: "󰈀".to_string(),
                 color,
                 warn
             })
-        }?;
-        return Some(ssid);
+        };
     }
     None
 }
