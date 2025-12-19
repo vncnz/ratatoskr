@@ -93,7 +93,8 @@ pub struct VolumeStats {
 pub struct VolumeObj {
     pub value: i64,
     pub icon: String,
-    pub clazz: String
+    pub clazz: String,
+    pub headphones: i8
 }
 
 #[derive(Default, Serialize)]

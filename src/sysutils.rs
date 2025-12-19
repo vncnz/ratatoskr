@@ -124,12 +124,20 @@ pub fn get_volume () -> Option<VolumeStats> {
     // println!("\n{:?}", stdout);
     let vol: Result<VolumeObj, _> = serde_json::from_str(&stdout);
     if let Ok(volume) = vol {
+        let warn = if volume.value == 0 {
+            0.0
+        } else if volume.headphones == 1 {
+            utils::get_warn_level(40.0, 90.0, volume.value as f64, false)
+        } else {
+            utils::get_warn_level(0.0, 90.0, volume.value as f64, false).max(0.4)
+        };
+        
         return Some(VolumeStats {
             color: utils::get_color_gradient(40.0, 100.0, volume.value as f64, false),
             icon: volume.icon,
             value: volume.value,
             clazz: volume.clazz,
-            warn: 0.0
+            warn
         })
     } else {
         Some(VolumeStats::default())
