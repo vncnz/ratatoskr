@@ -221,13 +221,14 @@ fn main() {
     stat_updater!(stats, Duration::from_secs(1), get_sys_temperatures, temperature, false, &tx, "temperature");
     stat_updater!(stats, Duration::from_secs(600), get_weather, weather, true, &tx, "weather");
     stat_updater!(stats, Duration::from_millis(500), get_load_avg, loadavg, false, &tx, "loadavg");
-    stat_updater!(stats, Duration::from_secs(1), get_volume, volume, false, &tx, "volume");
+    // stat_updater!(stats, Duration::from_secs(1), get_volume, volume, false, &tx, "volume");
     stat_updater!(stats, Duration::from_secs(1), get_battery, battery, false, &tx, "battery");
     stat_updater!(stats, Duration::from_secs(1), get_network_stats, network, false, &tx, "network");
     stat_updater!(stats, Duration::from_secs(1), get_brightness_stats, display, false, &tx, "display");
 
 
-
+    let (tx_audio, rx_audio) = std::sync::mpsc::channel();
+    spawn_volume_listener(tx_audio);
 
     loop {
         if let Ok(mut data) = stats.lock() {
@@ -236,6 +237,17 @@ fn main() {
 
             // send_burst(&data, tx.clone().unwrap());
         }
+        while let Ok(volume_obj) = rx_audio.recv() {
+            if let Ok(mut data) = stats.lock() {
+                let json_val = serde_json::to_value(&volume_obj).unwrap_or_default();
+                if !send("volume".to_string(), json_val, tx.clone()) {
+                    // eprintln!("Dispatcher terminato, chiudo thread di {}", $name);
+                    // break;
+                }
+                data.volume = Some(volume_obj);
+            }
+        }
+
         // let data = stats.lock().unwrap();
         /* if let Err(e) = write_json_atomic(output_path, &*data) {
             eprintln!("Failed to write sysinfo JSON: {e}");

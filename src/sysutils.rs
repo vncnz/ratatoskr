@@ -137,6 +137,7 @@ pub fn get_volume () -> Option<VolumeStats> {
             icon: volume.icon,
             value: volume.value,
             clazz: volume.clazz,
+            headphones: volume.headphones,
             warn
         })
     } else {
@@ -541,69 +542,99 @@ pub fn get_niri_situation () -> std::io::Result<Arc<Mutex<EventStreamState>>> {
     Ok(state)
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct AudioState {
-    pub volume: u32,
-    pub muted: bool,
-    pub port_name: Option<String> // Es: "analog-output-headphones"
-}
+// #[derive(Debug, Clone, Default)]
+use std::{
+    process::Stdio,
+    sync::mpsc::Sender,
+    thread,
+};
 
-/*pub fn get_audio_situation() -> std::io::Result<Arc<Mutex<AudioState>>> {
-    let audio_state = Arc::new(Mutex::new(AudioState::default()));
-    let state_clone = Arc::clone(&audio_state);
-
+pub fn spawn_volume_listener(tx: Sender<VolumeStats>) {
+    if let Some(obj) = read_volume_obj() {
+        let _ = tx.send(obj);
+    }
     thread::spawn(move || {
-        let mut proplist = Proplist::new().unwrap();
-        proplist.set_str(pulse::proplist::properties::APPLICATION_NAME, "ratatoskr-audio").unwrap();
+        let mut child = Command::new("pactl")
+            .arg("subscribe")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("pactl subscribe failed");
 
-        let mut mainloop = Mainloop::new().unwrap();
-        let mut context = Context::new_with_proplist(&mainloop, "ratatoskr-context", &proplist).unwrap();
+        let stdout = child.stdout.take().unwrap();
+        let reader = BufReader::new(stdout);
 
-        context.connect(None, pulse::context::FlagSet::NOFLAGS, None).unwrap();
-        while let IterateResult::Success(_) = mainloop.iterate(false) {
-            if let pulse::context::State::Ready = context.get_state() {
-                break;
+        for line in reader.lines().flatten() {
+            // filtro eventi inutili
+            if !line.contains("sink") && !line.contains("server") {
+                continue;
             }
-        }
 
-        let introspect = context.introspect();
-        introspect.get_sink_info_list(move |result| {
-            if let ListResult::Item(sink) = result {
-                let mut data = state_clone.lock().unwrap();
-                data.volume = sink.volume.avg().0;
-                data.muted = sink.mute;
+            if let Some(obj) = read_volume_obj() {
+                let _ = tx.send(obj);
             }
-        });
-
-        // Subscribing to events
-        let context = Arc::new(Mutex::new(context));
-        let state_clone = Arc::new(Mutex::new(state_clone));
-        let context_clone = Arc::clone(&context);
-        let state_clone_2 = Arc::clone(&state_clone);
-        context.lock().unwrap().set_subscribe_callback(Some(Box::new(move |facility, _op, _idx| {
-            if facility == Some(pulse::context::subscribe::Facility::Sink) {
-                let introspect = context_clone.lock().unwrap().introspect();
-                
-                introspect.get_sink_info_list(move |result| {
-                    if let ListResult::Item(sink) = result {
-                        let mut data = state_clone_2.lock().unwrap();
-                        data.volume = sink.volume.avg().0;
-                        data.muted = sink.mute;
-                        data.port_name = sink
-                            .active_port
-                            .as_ref()
-                            .and_then(|p| p.name.as_ref().map(|name| name.to_string()));
-                    }
-                });
-            }
-        })));
-
-
-        context.lock().unwrap().subscribe(pulse::context::subscribe::InterestMaskSet::SINK, |_| {});
-        loop {
-            mainloop.iterate(true);
         }
     });
+}
 
-    Ok(audio_state)
-}*/
+fn read_volume_obj() -> Option<VolumeStats> {
+    // eprint!("Reading volume");
+    let volume = read_volume()?;
+    let headphones = read_headphones()?;
+
+    let warn = if volume == 0 {
+        0.0
+    } else if headphones == 1 {
+        utils::get_warn_level(20.0, 90.0, volume as f64, false)
+    } else {
+        utils::get_warn_level(0.0, 90.0, volume as f64, false).max(0.4)
+    };
+
+    Some(VolumeStats {
+        value: volume,
+        icon: "".to_string(),
+        color: "".to_string(),
+        clazz: "".to_string(),
+        warn,
+        headphones,
+    })
+}
+
+fn read_volume() -> Option<i64> {
+    let out_mute = Command::new("pactl")
+        .args(["get-sink-mute", "@DEFAULT_SINK@"])
+        .output()
+        .ok()?;
+    let s_mute = String::from_utf8_lossy(&out_mute.stdout);
+    let muted = s_mute.split_whitespace().find(|w| w.ends_with("yes")).is_some();
+
+    if muted {
+        Some(0)
+    } else {
+        let out = Command::new("pactl")
+            .args(["get-sink-volume", "@DEFAULT_SINK@"])
+            .output()
+            .ok()?;
+
+        let s = String::from_utf8_lossy(&out.stdout);
+
+        // estrai percentuale (prima che ti chieda: sì, pactl è un parser testuale dell’inferno)
+        s.split_whitespace()
+            .find(|w| w.ends_with('%'))
+            .and_then(|w| w.trim_end_matches('%').parse::<i64>().ok())
+    }
+}
+
+fn read_headphones() -> Option<i8> {
+    let out = Command::new("pactl")
+        .args(["list", "sinks"])
+        .output()
+        .ok()?;
+
+    let s = String::from_utf8_lossy(&out.stdout);
+
+    let plugged = s.lines().any(|l| {
+        l.contains("Active Port") && l.contains("headphones")
+    });
+
+    Some(if plugged { 1 } else { 0 })
+}

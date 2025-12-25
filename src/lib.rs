@@ -84,9 +84,10 @@ pub struct AvgLoadStats {
 #[derive(Default, Serialize)]
 pub struct VolumeStats {
     pub value: i64,
-    pub icon: String,
-    pub color: String,
-    pub clazz: String,
+    pub icon: String, // legacy
+    pub color: String, // legacy
+    pub clazz: String, // legacy
+    pub headphones: i8,
     pub warn: f64
 }
 #[derive(Deserialize)]
