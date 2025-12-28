@@ -1,4 +1,4 @@
-use std::process::Command;
+use std::{process::Command};
 
 use sysinfo::{Disks, System};
 use chrono::Utc;
@@ -738,9 +738,11 @@ pub fn spawn_upower_listener(tx: Sender<BluetoothStats>) {
 
         // Initial snapshot
         let upowercall: Result<Vec<OwnedObjectPath>, _> = upower.call("EnumerateDevices", &());
+        let mut warn = 0.0;
         if let Ok(paths) = upowercall {
             for path in paths {
                 if let Some(dev) = read_device(&conn, &path) {
+                    warn = dev.warn.max(warn);
                     devices.insert(path.to_string(), dev);
                 }
             }
@@ -748,7 +750,7 @@ pub fn spawn_upower_listener(tx: Sender<BluetoothStats>) {
         let obj = BluetoothStats {
             devices: devices.values().cloned().collect(),
             icon: "".to_string(),
-            warn: 0.0
+            warn
         };
         let _ = tx.send(obj);
         // println!("devices {:?}", devices);
