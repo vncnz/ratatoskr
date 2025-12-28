@@ -127,6 +127,10 @@ fn send (name: String, value: serde_json::Value, tx: Option<mpsc::Sender<String>
             let warn = json_val.get("warn").and_then(|v| v.as_f64()).unwrap_or(1.0);
             let icon = json_val.get("icon").and_then(|v| v.as_str()).unwrap_or("");
 
+            /* if name == "bt-batteries" {
+                println!("\n\n{name} {warn} {icon} {json_val}\n\n");
+            } */
+
             let msg = serde_json::json!({
                 "resource": name,
                 "warning": warn,
@@ -260,11 +264,7 @@ fn main() {
                     // eprintln!("Dispatcher terminato, chiudo thread di {}", $name);
                     // break;
                 }
-                data.bluetoothBatteries = Some(BluetoothStats {
-                    devices: batterydevice_obj,
-                    icon: "".to_string(),
-                    warn: 0.0
-                });
+                data.bluetoothBatteries = Some(batterydevice_obj);
             }
         }
 

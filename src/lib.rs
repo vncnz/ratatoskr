@@ -137,6 +137,7 @@ pub struct BatteryDevice {
     pub name: String,
     pub kind: DeviceKind,
     pub percentage: f64,
+    pub warn: f64
 }
 
 #[derive(Debug, Clone, Serialize)]

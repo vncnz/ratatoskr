@@ -3,7 +3,7 @@ use std::process::Command;
 use sysinfo::{Disks, System};
 use chrono::Utc;
 
-use crate::{AvgLoadStats, BatteryDevice, BatteryStats, DeviceKind, DiskStats, EmbeddedDisplayStats, NetworkStats, RamStats, TempStats, VolumeObj, VolumeStats, WeatherStats, utils};
+use crate::{AvgLoadStats, BatteryDevice, BatteryStats, BluetoothStats, DeviceKind, DiskStats, EmbeddedDisplayStats, NetworkStats, RamStats, TempStats, VolumeObj, VolumeStats, WeatherStats, utils};
 
 
 
@@ -723,7 +723,7 @@ use zbus::{blocking::Connection, blocking::Proxy};
 use std::{collections::HashMap};
 use zvariant::OwnedObjectPath;
 
-pub fn spawn_upower_listener(tx: Sender<Vec<BatteryDevice>>) {
+pub fn spawn_upower_listener(tx: Sender<BluetoothStats>) {
     thread::spawn(move || {
         let conn = Connection::system().expect("DBus connection failed");
 
@@ -745,8 +745,13 @@ pub fn spawn_upower_listener(tx: Sender<Vec<BatteryDevice>>) {
                 }
             }
         }
-        let _ = tx.send(devices.values().cloned().collect());
-        println!("devices {:?}", devices);
+        let obj = BluetoothStats {
+            devices: devices.values().cloned().collect(),
+            icon: "".to_string(),
+            warn: 0.0
+        };
+        let _ = tx.send(obj);
+        // println!("devices {:?}", devices);
 
 
         // Check updates
@@ -795,7 +800,12 @@ pub fn spawn_upower_listener(tx: Sender<Vec<BatteryDevice>>) {
                         }
                     }
                     // println!("devices {:?}", devices);
-                    let _ = tx.send(devices.values().cloned().collect());
+                    let obj = BluetoothStats {
+                        devices: devices.values().cloned().collect(),
+                        icon: "".to_string(),
+                        warn: 0.0
+                    };
+                    let _ = tx.send(obj);
                     // println!("devices2222222222 {:?}", devices);
                 }
             }
@@ -837,5 +847,6 @@ fn read_device(conn: &Connection, path: &OwnedObjectPath) -> Option<BatteryDevic
         name: model,
         kind: map_device_type(dev_type),
         percentage,
+        warn: crate::utils::get_warn_level(10.0, 30.0, percentage, true)
     })
 }
