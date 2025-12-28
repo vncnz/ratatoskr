@@ -13,6 +13,8 @@ freedesktop-icons = "0.4"
 libpulse-binding = "2"
 battery = "0.7.8"
 chrono = "0.4.41"
+zbus = "4"
+zvariant = "4"
 
 
 [[bin]]

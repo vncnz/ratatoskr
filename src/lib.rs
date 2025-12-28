@@ -14,6 +14,7 @@ pub struct SystemStats {
     pub battery: Option<BatteryStats>,
     pub network: Option<NetworkStats>,
     pub display: Option<EmbeddedDisplayStats>,
+    pub bluetoothBatteries: Option<BluetoothStats>,
     pub written_at: u64,
     pub metronome: bool
 }
@@ -127,6 +128,29 @@ pub struct EmbeddedDisplayStats {
     pub brightness_current: u32,
     pub brightness_max: u32,
     pub perc: u8,
+    pub icon: String,
+    pub warn: f64
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BatteryDevice {
+    pub name: String,
+    pub kind: DeviceKind,
+    pub percentage: f64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub enum DeviceKind {
+    Mouse,
+    Keyboard,
+    Headphones,
+    Gamepad,
+    Unknown,
+}
+
+#[derive(Default, Serialize)]
+pub struct BluetoothStats {
+    pub devices: Vec<BatteryDevice>,
     pub icon: String,
     pub warn: f64
 }
