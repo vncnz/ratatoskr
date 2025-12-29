@@ -1,9 +1,9 @@
-use std::process::Command;
+use std::{process::Command};
 
 use sysinfo::{Disks, System};
 use chrono::Utc;
 
-use crate::{AvgLoadStats, BatteryStats, DiskStats, EmbeddedDisplayStats, NetworkStats, RamStats, TempStats, VolumeObj, VolumeStats, WeatherStats, utils};
+use crate::{AvgLoadStats, BatteryDevice, BatteryStats, BluetoothStats, DeviceKind, DiskStats, EmbeddedDisplayStats, NetworkStats, RamStats, TempStats, VolumeObj, VolumeStats, WeatherStats, utils};
 
 
 
@@ -117,6 +117,7 @@ pub fn get_sys_temperatures () -> Option<TempStats> {
     })
 }
 
+// Legacy, just for legacy-ratatoskr
 #[deprecated]
 pub fn get_volume () -> Option<VolumeStats> {
     let output = Command::new("volume.sh").arg("json").output();
@@ -625,4 +626,217 @@ fn read_headphones() -> Option<i8> {
     });
 
     Some(if plugged { 1 } else { 0 })
+}
+
+// Bluetooth
+
+fn map_device_type(t: u32) -> DeviceKind {
+    match t {
+        5 => DeviceKind::Mouse,
+        6 => DeviceKind::Keyboard,
+        11 => DeviceKind::Headphones, // spesso audio
+        12 => DeviceKind::Gamepad,
+        _ => DeviceKind::Unknown,
+    }
+}
+
+use zbus::{blocking::Connection, blocking::Proxy};
+
+/* pub fn read_external_batteries() -> zbus::Result<Vec<BatteryDevice>> {
+    let conn = Connection::system()?;
+
+    let upower = Proxy::new(
+        &conn,
+        "org.freedesktop.UPower",
+        "/org/freedesktop/UPower",
+        "org.freedesktop.UPower",
+    )?;
+
+    let device_paths: Vec<zvariant::OwnedObjectPath> =
+        upower.call("EnumerateDevices", &())?;
+
+    let mut result = Vec::new();
+
+    for path in device_paths {
+        let dev = Proxy::new(
+            &conn,
+            "org.freedesktop.UPower",
+            path.as_str(),
+            "org.freedesktop.UPower.Device",
+        )?;
+
+        // proprietà che ci interessano
+        let is_present: bool = dev.get_property("IsPresent")?;
+        let power_supply: bool = dev.get_property("PowerSupply")?;
+        let dev_type: u32 = dev.get_property("Type")?;
+
+        // filtri fondamentali
+        if !is_present || power_supply {
+            continue;
+        }
+
+        // escludi AC e batteria interna
+        if dev_type == 1 || dev_type == 2 {
+            continue;
+        }
+
+        let percentage: f64 = dev.get_property("Percentage")?;
+        let model: String = dev
+            .get_property::<String>("Model")
+            .unwrap_or_else(|_| "Unknown".into());
+
+        result.push(BatteryDevice {
+            name: model,
+            kind: map_device_type(dev_type),
+            percentage,
+        });
+    }
+
+    Ok(result)
+} */
+
+
+
+/* pub fn print_bt_batteries () {
+    match read_external_batteries() {
+        Ok(devs) => {
+            for d in devs {
+                println!("{:?}: {}% ({:?})", d.name, d.percentage, d.kind);
+            }
+        }
+        Err(e) => eprintln!("Battery read error: {e}"),
+    }
+} */
+
+use std::{collections::HashMap};
+use zvariant::OwnedObjectPath;
+
+pub fn spawn_upower_listener(tx: Sender<BluetoothStats>) {
+    thread::spawn(move || {
+        let conn = Connection::system().expect("DBus connection failed");
+
+        let upower = Proxy::new(
+            &conn,
+            "org.freedesktop.UPower",
+            "/org/freedesktop/UPower",
+            "org.freedesktop.UPower",
+        ).expect("UPower proxy");
+
+        let mut devices: HashMap<String, BatteryDevice> = HashMap::new();
+
+        // Initial snapshot
+        let upowercall: Result<Vec<OwnedObjectPath>, _> = upower.call("EnumerateDevices", &());
+        let mut warn = 0.0;
+        if let Ok(paths) = upowercall {
+            for path in paths {
+                if let Some(dev) = read_device(&conn, &path) {
+                    warn = dev.warn.max(warn);
+                    devices.insert(path.to_string(), dev);
+                }
+            }
+        }
+        let obj = BluetoothStats {
+            devices: devices.values().cloned().collect(),
+            icon: "".to_string(),
+            warn
+        };
+        let _ = tx.send(obj);
+        // println!("devices {:?}", devices);
+
+
+        // Check updates
+        let mut child = Command::new("upower")
+            .arg("-m")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("failed to start upower -m");
+
+        let stdout = child.stdout.take().expect("no stdout");
+        let reader = BufReader::new(stdout);
+
+        for line in reader.lines() {
+            // println!("{line:?}");
+            let line = match line {
+                Ok(l) => l,
+                Err(_) => break,
+            };
+
+            // examples:
+            // "device added: /org/freedesktop/UPower/devices/..."
+            // "device changed: /org/freedesktop/UPower/devices/..."
+
+            if let (Some(mut path), Some(evt_type)) = (parse_upower_event(&line), parse_upower_event_type(&line)) {
+                path = path.trim();
+                // println!("trimmed: {path} {evt_type}");
+
+                let mut update = false;
+                if evt_type == "device changed" && devices.contains_key(path) {
+                    update = true;
+                } else if evt_type == "device removed" && devices.contains_key(path) {
+                    devices.remove(path);
+                    update = true;
+                } else if evt_type == "device added" {
+                    update = true;
+                }
+                
+                // println!("Update? {}", update);
+                if update {
+                    let upowercall: Result<Vec<OwnedObjectPath>, _> = upower.call("EnumerateDevices", &());
+                    if let Ok(paths) = upowercall {
+                        for path in paths {
+                            if let Some(dev) = read_device(&conn, &path) {
+                                devices.insert(path.to_string(), dev);
+                            }
+                        }
+                    }
+                    // println!("devices {:?}", devices);
+                    let obj = BluetoothStats {
+                        devices: devices.values().cloned().collect(),
+                        icon: "".to_string(),
+                        warn: 0.0
+                    };
+                    let _ = tx.send(obj);
+                    // println!("devices2222222222 {:?}", devices);
+                }
+            }
+        }
+    });
+}
+
+fn parse_upower_event(line: &str) -> Option<&str> {
+    line.split(": ").nth(1)
+}
+fn parse_upower_event_type(line: &str) -> Option<&str> {
+    if let Some(cmd) = line.split(": ").nth(0) {
+        return cmd.split("\t").nth(1)
+    }
+    return None
+}
+
+
+fn read_device(conn: &Connection, path: &OwnedObjectPath) -> Option<BatteryDevice> {
+    let dev = Proxy::new(
+        conn,
+        "org.freedesktop.UPower",
+        path.as_str(),
+        "org.freedesktop.UPower.Device",
+    ).ok()?;
+
+    let is_present: bool = dev.get_property("IsPresent").ok()?;
+    let power_supply: bool = dev.get_property("PowerSupply").ok()?;
+    let dev_type: u32 = dev.get_property("Type").ok()?;
+
+    if !is_present || power_supply || dev_type == 1 || dev_type == 2 {
+        return None;
+    }
+
+    let percentage: f64 = dev.get_property("Percentage").ok()?;
+    let model: String = dev.get_property("Model").unwrap_or_else(|_| "Unknown".into());
+
+    Some(BatteryDevice {
+        name: model,
+        kind: map_device_type(dev_type),
+        percentage,
+        warn: crate::utils::get_warn_level(10.0, 30.0, percentage, true)
+    })
 }

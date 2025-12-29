@@ -5,7 +5,7 @@ use chrono::Utc;
 
 use std::fs;
 
-use ratatoskr::SystemStats;
+use ratatoskr::{BluetoothStats, SystemStats};
 use ratatoskr::sysutils::*;
 
 use std::sync::{mpsc};
@@ -127,6 +127,10 @@ fn send (name: String, value: serde_json::Value, tx: Option<mpsc::Sender<String>
             let warn = json_val.get("warn").and_then(|v| v.as_f64()).unwrap_or(1.0);
             let icon = json_val.get("icon").and_then(|v| v.as_str()).unwrap_or("");
 
+            /* if name == "bt-batteries" {
+                println!("\n\n{name} {warn} {icon} {json_val}\n\n");
+            } */
+
             let msg = serde_json::json!({
                 "resource": name,
                 "warning": warn,
@@ -230,6 +234,10 @@ fn main() {
     let (tx_audio, rx_audio) = std::sync::mpsc::channel();
     spawn_volume_listener(tx_audio);
 
+    let (tx_bluetooth, rx_bluetooth) = std::sync::mpsc::channel();
+    spawn_upower_listener(tx_bluetooth);
+    // print_bt_batteries();
+
     loop {
         if let Ok(mut data) = stats.lock() {
             data.written_at = get_unix_time();
@@ -237,7 +245,7 @@ fn main() {
 
             // send_burst(&data, tx.clone().unwrap());
         }
-        while let Ok(volume_obj) = rx_audio.recv() {
+        while let Ok(volume_obj) = rx_audio.try_recv() {
             if let Ok(mut data) = stats.lock() {
                 let json_val = serde_json::to_value(&volume_obj).unwrap_or_default();
                 if !send("volume".to_string(), json_val, tx.clone()) {
@@ -245,6 +253,18 @@ fn main() {
                     // break;
                 }
                 data.volume = Some(volume_obj);
+            }
+        }
+
+        while let Ok(batterydevice_obj) = rx_bluetooth.try_recv() {
+            // println!("Bluetooth update {:?}", batterydevice_obj);
+            if let Ok(mut data) = stats.lock() {
+                let json_val = serde_json::to_value(&batterydevice_obj).unwrap_or_default();
+                if !send("bt-batteries".to_string(), json_val, tx.clone()) {
+                    // eprintln!("Dispatcher terminato, chiudo thread di {}", $name);
+                    // break;
+                }
+                data.bluetoothBatteries = Some(batterydevice_obj);
             }
         }
 
