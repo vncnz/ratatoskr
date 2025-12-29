@@ -117,9 +117,9 @@ pub fn get_sys_temperatures () -> Option<TempStats> {
     })
 }
 
-
+#[deprecated]
 pub fn get_volume () -> Option<VolumeStats> {
-    let output = Command::new("/home/vncnz/.config/eww/scripts/volume.sh").arg("json").output();
+    let output = Command::new("volume.sh").arg("json").output();
     let stdout = String::from_utf8(output.unwrap().stdout).unwrap();
     // println!("\n{:?}", stdout);
     let vol: Result<VolumeObj, _> = serde_json::from_str(&stdout);
@@ -152,21 +152,9 @@ pub fn get_unix_time () -> u64 {
         Err(_) => 0,
     }
 }
-/*
-fn get_brightness () -> SysUpdate {
-    let output = Command::new("/home/vncnz/.config/eww/scripts/brightness.sh").arg("json").output();
-    let stdout = String::from_utf8(output.unwrap().stdout).unwrap();
-    // println!("\n{:?}", stdout);
-    if let Ok(brightness) = serde_json::from_str(&stdout) {
-        SysUpdate::Brightness(brightness)
-    } else {
-        SysUpdate::Error("Error with serde and brightness data".to_string())
-    }
-}
-*/
 
 pub fn get_weather () -> Option<WeatherStats> {
-    let output = Command::new("/home/vncnz/.config/eww/scripts/meteo.sh").arg("Desenzano Del Garda").arg("45.457692").arg("10.570684").output();
+    let output = Command::new("meteo.sh").arg("Desenzano Del Garda").arg("45.457692").arg("10.570684").output();
     let stdout = String::from_utf8(output.unwrap().stdout).unwrap();
     // println!("\n{:?}", stdout);
     // let weather: WeatherObj;
