@@ -14,7 +14,7 @@ pub struct SystemStats {
     pub battery: Option<BatteryStats>,
     pub network: Option<NetworkStats>,
     pub display: Option<EmbeddedDisplayStats>,
-    pub bluetoothBatteries: Option<BluetoothStats>,
+    pub bluetooth_batteries: Option<BluetoothStats>,
     pub written_at: u64,
     pub metronome: bool
 }

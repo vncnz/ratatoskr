@@ -264,7 +264,7 @@ fn main() {
                     // eprintln!("Dispatcher terminato, chiudo thread di {}", $name);
                     // break;
                 }
-                data.bluetoothBatteries = Some(batterydevice_obj);
+                data.bluetooth_batteries = Some(batterydevice_obj);
             }
         }
 
