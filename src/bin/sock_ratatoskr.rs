@@ -5,7 +5,7 @@ use chrono::Utc;
 
 use std::fs;
 
-use ratatoskr::{BluetoothStats, SystemStats};
+use ratatoskr::SystemStats;
 use ratatoskr::sysutils::*;
 
 use std::sync::{mpsc};
