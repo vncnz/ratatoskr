@@ -26,19 +26,10 @@ pub ram: Option<RamStats>,
     pub metronome: bool */
 
 fn send_burst (s: &SystemStats, tx: mpsc::Sender<String>) {
+    println!("About to send burst");
+
     // Sending only resources with a pooling time longer than 1s
     let fields: [(&str, serde_json::Value); 9] = [
-        /*
-    stat_updater!(stats, Duration::from_secs(1), get_ram_info, ram, false, &tx, "ram");
-    stat_updater!(stats, Duration::from_secs(5), get_disk_info, disk, false, &tx, "disk");
-    stat_updater!(stats, Duration::from_secs(1), get_sys_temperatures, temperature, false, &tx, "temperature");
-    stat_updater!(stats, Duration::from_secs(600), get_weather, weather, true, &tx, "weather");
-    stat_updater!(stats, Duration::from_millis(500), get_load_avg, loadavg, false, &tx, "loadavg");
-    stat_updater!(stats, Duration::from_secs(1), get_volume, volume, false, &tx, "volume");
-    stat_updater!(stats, Duration::from_secs(1), get_battery, battery, false, &tx, "battery");
-    stat_updater!(stats, Duration::from_secs(1), get_network_stats, network, false, &tx, "network");
-    stat_updater!(stats, Duration::from_secs(1), get_brightness_stats, display, false, &tx, "display");
-        */
         ("ram", serde_json::json!(s.ram)),
         ("disk", serde_json::json!(s.disk)),
         ("temperature", serde_json::json!(s.temperature)),
@@ -54,10 +45,10 @@ fn send_burst (s: &SystemStats, tx: mpsc::Sender<String>) {
 
     // println!("{:?}", fields);
     for (key, value) in fields {
-        // println!("{} = {}", key, value);
+        // println!("Burst - sending {}", key);
         // println!("sending {key}");
         let _ = send(key.to_string(), value, Some(tx.clone()));
-        // println!("sent: {}", sent);
+        // println!("Burst - sent {}? {}", key, sent);
     }
     // send("burst end".to_string(), value::Value::Null, Some(tx.clone()));
     println!("Burst sent");
@@ -84,11 +75,13 @@ pub fn start_socket_dispatcher(
                     println!("{} New client connected", chrono::Local::now().format("%H:%M:%S%.3f"));
                     stream.set_nonblocking(true).ok();
                     clients_accept.lock().unwrap().push(stream);
+                    println!("About to lock s and send burst");
                     if let Ok(data) = s.lock() {
                         // thread::sleep(Duration::from_millis(2000));
                         send_burst(&data, tx_clone.clone());
                         // tx_clone.send("burst".into()).ok();
                     }
+                    println!("Unlocked s");
                 }
                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                     thread::sleep(std::time::Duration::from_millis(100));
@@ -160,7 +153,7 @@ macro_rules! stat_updater { // New version, standby-proof!
             let stats = Arc::clone(&$stats);
             let tx = $tx.clone();
             thread::spawn(move || {
-                let last_update = Utc::now() - $interval;
+                let mut last_update = Utc::now() - $interval;
                 let sleep_time = if $check_sleep { std::cmp::min($interval, Duration::from_secs(1)) } else { $interval };
                 loop {
                     let run_now = if $check_sleep { Utc::now() >= last_update + $interval } else { true };
@@ -168,20 +161,24 @@ macro_rules! stat_updater { // New version, standby-proof!
                         println!("{:?} {:?}", Utc::now(), last_update + $interval);
                     } */
                     if run_now {
+                        let new_value = $getter();
 
                         if let Ok(mut data) = stats.lock() {
-                            let new_value = $getter();
 
-                            let should_send = match (&data.$field, &new_value) {
-                                (Some(old), Some(new)) => $comparator(old, new),
-                                _ => true
-                            };
+                            if new_value.is_some() {
+                                last_update = Utc::now();
 
-                            if should_send {
-                                let json_val = serde_json::to_value(&new_value).unwrap_or_default();
-                                if !send($name.to_string(), json_val, tx.clone()) {
-                                    eprintln!("Dispatcher terminato, chiudo thread di {}", $name);
-                                    break;
+                                let should_send = match (&data.$field, &new_value) {
+                                    (Some(old), Some(new)) => $comparator(old, new),
+                                    _ => true
+                                };
+
+                                if should_send {
+                                    let json_val = serde_json::to_value(&new_value).unwrap_or_default();
+                                    if !send($name.to_string(), json_val, tx.clone()) {
+                                        eprintln!("Dispatcher terminato, chiudo thread di {}", $name);
+                                        break;
+                                    }
                                 }
                             }
                             data.$field = new_value;
