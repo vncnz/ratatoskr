@@ -443,7 +443,7 @@ pub fn get_brightness_stats() -> Option<EmbeddedDisplayStats> {
     let perc = (100.0 * (brightness_current as f32) / (brightness_max as f32)).round() as u8;
 
     let icons = ["", "", "", "", "", "", "", "", "", "", "", "", "", ""];
-    let icon_idx = ((brightness_current as f32) / (brightness_max as f32) * (icons.len() as f32)).round() as usize;
+    let icon_idx = ((brightness_current as f32) / (brightness_max as f32) * (icons.len() as f32 - 1.0)).round() as usize;
     let icon = icons[icon_idx].into();
 
     Some(EmbeddedDisplayStats {
