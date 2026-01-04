@@ -5,7 +5,7 @@ use chrono::Utc;
 
 use std::fs;
 
-use ratatoskr::SystemStats;
+use ratatoskr::{RamStats, SystemStats};
 use ratatoskr::sysutils::*;
 
 use std::sync::{mpsc};
@@ -155,12 +155,12 @@ fn send (name: String, value: serde_json::Value, tx: Option<mpsc::Sender<String>
 
 
 macro_rules! stat_updater { // New version, standby-proof!
-    ($stats:expr, $interval:expr, $getter:expr, $field:ident, $check_sleep:expr, $tx:expr, $name:expr) => {
+    ($stats:expr, $interval:expr, $getter:expr, $field:ident, $check_sleep:expr, $comparator:expr, $tx:expr, $name:expr) => {
         {
             let stats = Arc::clone(&$stats);
             let tx = $tx.clone();
             thread::spawn(move || {
-                let mut last_update = Utc::now() - $interval;
+                let last_update = Utc::now() - $interval;
                 let sleep_time = if $check_sleep { std::cmp::min($interval, Duration::from_secs(1)) } else { $interval };
                 loop {
                     let run_now = if $check_sleep { Utc::now() >= last_update + $interval } else { true };
@@ -168,7 +168,29 @@ macro_rules! stat_updater { // New version, standby-proof!
                         println!("{:?} {:?}", Utc::now(), last_update + $interval);
                     } */
                     if run_now {
-                        let value = $getter();
+
+                        if let Ok(mut data) = stats.lock() {
+                            let new_value = $getter();
+
+                            let should_send = match (&data.$field, &new_value) {
+                                (Some(old), Some(new)) => $comparator(old, new),
+                                _ => true
+                            };
+
+                            if should_send {
+                                let json_val = serde_json::to_value(&new_value).unwrap_or_default();
+                                if !send($name.to_string(), json_val, tx.clone()) {
+                                    eprintln!("Dispatcher terminato, chiudo thread di {}", $name);
+                                    break;
+                                }
+                            }
+                            data.$field = new_value;
+                        }
+
+
+
+
+                        /* let value = $getter();
                         if let Ok(mut data) = stats.lock() {
                             if value.is_some() {
                                 last_update = Utc::now();
@@ -182,13 +204,17 @@ macro_rules! stat_updater { // New version, standby-proof!
                             }
 
                             data.$field = value;
-                        }
+                        } */
                     }
                     std::thread::sleep(sleep_time);
                 }
             });
         }
     };
+}
+
+fn always_changed<T>(_: &T, _: &T) -> bool {
+    true
 }
 
 fn main() {
@@ -220,15 +246,15 @@ fn main() {
 
     // let msock = Arc::new(Mutex::new(UnixDatagram::unbound().expect("Error msock")));
 
-    stat_updater!(stats, Duration::from_secs(1), get_ram_info, ram, false, &tx, "ram");
-    stat_updater!(stats, Duration::from_secs(5), get_disk_info, disk, false, &tx, "disk");
-    stat_updater!(stats, Duration::from_secs(1), get_sys_temperatures, temperature, false, &tx, "temperature");
-    stat_updater!(stats, Duration::from_secs(600), get_weather, weather, true, &tx, "weather");
-    stat_updater!(stats, Duration::from_millis(500), get_load_avg, loadavg, false, &tx, "loadavg");
+    stat_updater!(stats, Duration::from_secs(1), get_ram_info, ram, false, |old: &RamStats, new: &RamStats| old.mem_percent.abs_diff(new.mem_percent) >= 1 || old.swap_percent.abs_diff(new.swap_percent) >= 1, &tx, "ram");
+    stat_updater!(stats, Duration::from_secs(5), get_disk_info, disk, false, always_changed, &tx, "disk");
+    stat_updater!(stats, Duration::from_secs(1), get_sys_temperatures, temperature, false, always_changed, &tx, "temperature");
+    stat_updater!(stats, Duration::from_secs(600), get_weather, weather, true, always_changed, &tx, "weather");
+    stat_updater!(stats, Duration::from_millis(500), get_load_avg, loadavg, false, always_changed, &tx, "loadavg");
     // stat_updater!(stats, Duration::from_secs(1), get_volume, volume, false, &tx, "volume");
-    stat_updater!(stats, Duration::from_secs(1), get_battery, battery, false, &tx, "battery");
-    stat_updater!(stats, Duration::from_secs(1), get_network_stats, network, false, &tx, "network");
-    stat_updater!(stats, Duration::from_secs(1), get_brightness_stats, display, false, &tx, "display");
+    stat_updater!(stats, Duration::from_secs(1), get_battery, battery, false, always_changed, &tx, "battery");
+    stat_updater!(stats, Duration::from_secs(1), get_network_stats, network, false, always_changed, &tx, "network");
+    stat_updater!(stats, Duration::from_secs(1), get_brightness_stats, display, false, always_changed, &tx, "display");
 
 
     let (tx_audio, rx_audio) = std::sync::mpsc::channel();

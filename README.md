@@ -56,4 +56,4 @@ Please note that this is a personal project, for personal use, developed in my (
 - ~~Bluetooth devices object is sent with warning 1.0 instead of 0.0~~ Solved!
 
 ## TODOs
-- Send only relevant updates (for example, ignore memory updates if less then 1% of change)
+- ~~Send only relevant updates (for example, ignore memory updates if less then 1% of change)~~ Done!
