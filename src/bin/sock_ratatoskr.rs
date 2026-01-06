@@ -5,7 +5,7 @@ use chrono::Utc;
 
 use std::fs;
 
-use ratatoskr::{RamStats, SystemStats};
+use ratatoskr::{EmbeddedDisplayStats, RamStats, SystemStats};
 use ratatoskr::sysutils::*;
 
 use std::sync::{mpsc};
@@ -214,6 +214,14 @@ fn always_changed<T>(_: &T, _: &T) -> bool {
     true
 }
 
+fn ram_changed (old: &RamStats, new: &RamStats) -> bool {
+    old.mem_percent.abs_diff(new.mem_percent) >= 1 || old.swap_percent.abs_diff(new.swap_percent) >= 1
+}
+
+fn brightness_changed (old: &EmbeddedDisplayStats, new: &EmbeddedDisplayStats) -> bool {
+    old.brightness_current != new.brightness_current
+}
+
 fn main() {
     // let output_path = "/tmp/ratatoskr.json";
     // let output_niri_path = "/tmp/windows.json";
@@ -243,7 +251,7 @@ fn main() {
 
     // let msock = Arc::new(Mutex::new(UnixDatagram::unbound().expect("Error msock")));
 
-    stat_updater!(stats, Duration::from_secs(1), get_ram_info, ram, false, |old: &RamStats, new: &RamStats| old.mem_percent.abs_diff(new.mem_percent) >= 1 || old.swap_percent.abs_diff(new.swap_percent) >= 1, &tx, "ram");
+    stat_updater!(stats, Duration::from_secs(1), get_ram_info, ram, false, ram_changed, &tx, "ram");
     stat_updater!(stats, Duration::from_secs(5), get_disk_info, disk, false, always_changed, &tx, "disk");
     stat_updater!(stats, Duration::from_secs(1), get_sys_temperatures, temperature, false, always_changed, &tx, "temperature");
     stat_updater!(stats, Duration::from_secs(600), get_weather, weather, true, always_changed, &tx, "weather");
@@ -251,7 +259,7 @@ fn main() {
     // stat_updater!(stats, Duration::from_secs(1), get_volume, volume, false, &tx, "volume");
     stat_updater!(stats, Duration::from_secs(1), get_battery, battery, false, always_changed, &tx, "battery");
     stat_updater!(stats, Duration::from_secs(1), get_network_stats, network, false, always_changed, &tx, "network");
-    stat_updater!(stats, Duration::from_secs(1), get_brightness_stats, display, false, always_changed, &tx, "display");
+    stat_updater!(stats, Duration::from_secs(1), get_brightness_stats, display, false, brightness_changed, &tx, "display");
 
 
     let (tx_audio, rx_audio) = std::sync::mpsc::channel();
