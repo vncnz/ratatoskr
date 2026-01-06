@@ -294,6 +294,7 @@ pub fn get_battery() -> Option<BatteryStats> {
             State::Full => "Full",
             State::Empty => "Empty",
             State::Unknown => "Unknown",
+            State::Notcharging => "NotCharging",
             _ => "Unexpected"
         }
         .to_string();
@@ -312,8 +313,9 @@ pub fn get_battery() -> Option<BatteryStats> {
                 else if percentage < 95 { "󰂂" }
                 else { "󰁹" }
             },
-            State::Full | State::Unknown => "󱟢",
+            State::Full | State::Notcharging => "󱟢",
             State::Empty => "Empty",
+            State::Unknown => "󰂑",
             // State::Unknown => "󰂑",
             _ => "󱧥"
         }).to_string();
