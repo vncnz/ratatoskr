@@ -5,7 +5,7 @@ use chrono::Utc;
 
 use std::fs;
 
-use ratatoskr::{EmbeddedDisplayStats, RamStats, SystemStats};
+use ratatoskr::{EmbeddedDisplayStats, NetworkStats, RamStats, SystemStats};
 use ratatoskr::sysutils::*;
 
 use std::sync::{mpsc};
@@ -222,6 +222,10 @@ fn brightness_changed (old: &EmbeddedDisplayStats, new: &EmbeddedDisplayStats) -
     old.brightness_current != new.brightness_current
 }
 
+fn network_changed (old: &NetworkStats, new: &NetworkStats) -> bool {
+    old.signal != new.signal || old.ip != new.ip || old.ssid != new.ssid // || old.iface != new.iface
+}
+
 fn main() {
     // let output_path = "/tmp/ratatoskr.json";
     // let output_niri_path = "/tmp/windows.json";
@@ -258,7 +262,7 @@ fn main() {
     stat_updater!(stats, Duration::from_millis(500), get_load_avg, loadavg, false, always_changed, &tx, "loadavg");
     // stat_updater!(stats, Duration::from_secs(1), get_volume, volume, false, &tx, "volume");
     stat_updater!(stats, Duration::from_secs(1), get_battery, battery, false, always_changed, &tx, "battery");
-    stat_updater!(stats, Duration::from_secs(1), get_network_stats, network, false, always_changed, &tx, "network");
+    stat_updater!(stats, Duration::from_secs(1), get_network_stats, network, false, network_changed, &tx, "network");
     stat_updater!(stats, Duration::from_secs(1), get_brightness_stats, display, false, brightness_changed, &tx, "display");
 
 
