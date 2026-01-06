@@ -294,7 +294,7 @@ pub fn get_battery() -> Option<BatteryStats> {
             State::Full => "Full",
             State::Empty => "Empty",
             State::Unknown => "Unknown",
-            _ => "Strage"
+            _ => "Unexpected"
         }
         .to_string();
 
