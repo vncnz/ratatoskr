@@ -2,10 +2,11 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use chrono::Utc;
+use sysinfo::Disk;
 
 use std::fs;
 
-use ratatoskr::{EmbeddedDisplayStats, NetworkStats, RamStats, SystemStats};
+use ratatoskr::{DiskStats, EmbeddedDisplayStats, NetworkStats, RamStats, SystemStats};
 use ratatoskr::sysutils::*;
 
 use std::sync::{mpsc};
@@ -226,6 +227,10 @@ fn network_changed (old: &NetworkStats, new: &NetworkStats) -> bool {
     old.signal != new.signal || old.ip != new.ip || old.ssid != new.ssid // || old.iface != new.iface
 }
 
+fn disk_changed (old: &DiskStats, new: &DiskStats) -> bool {
+    old.used_percent != new.used_percent
+}
+
 fn main() {
     // let output_path = "/tmp/ratatoskr.json";
     // let output_niri_path = "/tmp/windows.json";
@@ -256,7 +261,7 @@ fn main() {
     // let msock = Arc::new(Mutex::new(UnixDatagram::unbound().expect("Error msock")));
 
     stat_updater!(stats, Duration::from_secs(1), get_ram_info, ram, false, ram_changed, &tx, "ram");
-    stat_updater!(stats, Duration::from_secs(5), get_disk_info, disk, false, always_changed, &tx, "disk");
+    stat_updater!(stats, Duration::from_secs(5), get_disk_info, disk, false, disk_changed, &tx, "disk");
     stat_updater!(stats, Duration::from_secs(1), get_sys_temperatures, temperature, false, always_changed, &tx, "temperature");
     stat_updater!(stats, Duration::from_secs(600), get_weather, weather, true, always_changed, &tx, "weather");
     stat_updater!(stats, Duration::from_millis(500), get_load_avg, loadavg, false, always_changed, &tx, "loadavg");

@@ -57,4 +57,4 @@ Please note that this is a personal project, for personal use, developed in my (
 
 ## TODOs
 - ~~Send only relevant updates (for example, ignore memory updates if less then 1% of change)~~ Done!
-- ~~Send only relevant updates for display and network, too~~ Done!
+- ~~Send only relevant updates for display, network and disk, too~~ Done!
