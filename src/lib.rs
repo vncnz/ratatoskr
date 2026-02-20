@@ -103,6 +103,8 @@ pub struct VolumeObj {
 pub struct BatteryStats {
     pub percentage: i32,
     pub capacity: f32,
+    pub capacity_design: f32,
+    pub cycles: Option<u32>,
     pub eta: Option<f32>,
     pub state: String,
     pub icon: String,

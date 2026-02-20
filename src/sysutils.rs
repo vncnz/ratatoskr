@@ -252,6 +252,8 @@ pub fn get_battery() -> Option<BatteryStats> {
             return Some(BatteryStats {
                 percentage: 0,
                 capacity: 0.0,
+                capacity_design: 0.0,
+                cycles: None,
                 eta: None,
                 state: "no_manager".to_string(),
                 icon: "󰂑".to_string(),
@@ -268,6 +270,8 @@ pub fn get_battery() -> Option<BatteryStats> {
         return Some(BatteryStats {
             percentage: 0,
             capacity: 0.0,
+            capacity_design: 0.0,
+            cycles: None,
             eta: None,
             state: "no_battery".to_string(),
             icon: "".to_string(),
@@ -281,7 +285,9 @@ pub fn get_battery() -> Option<BatteryStats> {
 
         let percentage = ((battery.state_of_charge().value * 100.0) as f32).round() as i32;
         let capacity = battery.energy_full().value as f32;
+        let capacity_design = battery.energy_full_design().value as f32;
         let watt = battery.energy_rate().value as f32;
+        let cycles = battery.cycle_count();
 
         let eta = match battery.time_to_empty().or(battery.time_to_full()) {
             Some(t) => Some((t.value as f32) / 60.0),  // Converte da secondi a minuti
@@ -325,6 +331,8 @@ pub fn get_battery() -> Option<BatteryStats> {
         Some(BatteryStats {
             percentage,
             capacity,
+            capacity_design,
+            cycles,
             eta,
             state,
             icon,
@@ -336,6 +344,8 @@ pub fn get_battery() -> Option<BatteryStats> {
         Some(BatteryStats {
             percentage: 0,
             capacity: 0.0,
+            capacity_design: 0.0,
+            cycles: None,
             eta: None,
             state: "no_battery".to_string(),
             icon: "".to_string(),
