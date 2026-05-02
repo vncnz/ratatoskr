@@ -54,7 +54,11 @@ Please note that this is a personal project, for personal use, developed in my (
 
 ## Known bugs
 - ~~Bluetooth devices object is sent with warning 1.0 instead of 0.0~~ Solved!
+- With bluetooth mouse, two icons appear (mouse and generic bt device)
 
 ## TODOs
 - ~~Send only relevant updates (for example, ignore memory updates if less then 1% of change)~~ Done!
 - ~~Send only relevant updates for display, network and disk, too~~ Done!
+- Add support for configurable alert thresholds for system resources
+- Publish on AUR
+- Create a GIF?
