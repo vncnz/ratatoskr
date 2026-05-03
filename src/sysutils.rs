@@ -385,6 +385,8 @@ pub fn get_network_stats() -> Option<NetworkStats> {
             continue;
         }
 
+        let config: &Config = Config::global();
+
         let iface = parts[0].to_string();
         let ip = get_ip(&iface);
         let conn_type = parts[1].to_string();
@@ -407,8 +409,8 @@ pub fn get_network_stats() -> Option<NetworkStats> {
                     else if sig < 30 { icon = "󰢼"; }
                     else if sig < 60 { icon = "󰢽"; }
                     else { icon = "󰢾"; }
-                    color = Some(utils::get_color_gradient(20.0, 60.0, sig as f64, true));
-                    warn = utils::get_warn_level(20.0, 60.0, sig as f64, true)
+                    color = Some(config.threshold_wlan_signal.get_color(sig as f64));
+                    warn = config.threshold_wlan_signal.get_warn_level(sig as f64);
                 }
 
                 if wifi_parts.len() >= 3 && wifi_parts[0] == "yes" {

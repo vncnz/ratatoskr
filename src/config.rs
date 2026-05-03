@@ -12,6 +12,7 @@ const DEFAULT_DISK_RANGE: [f64; 2] = [60.0, 90.0];
 const DEFAULT_TEMPERATURE_RANGE: [f64; 2] = [80.0, 99.0];
 const DEFAULT_AVG_LOAD_RANGE: [f64; 2] = [0.0, 1.0];
 const DEFAULT_BATTERY_RANGE: [f64; 2] = [20.0, 70.0];
+const DEFAULT_WLAN_SIGNAL_RANGE: [f64; 2] = [20.0, 60.0];
 
 #[derive(Debug, Clone)]
 pub struct Threshold {
@@ -26,7 +27,8 @@ pub struct Config {
     pub threshold_disk: Threshold,
     pub threshold_temperature: Threshold,
     pub threshold_avg_load: Threshold,
-    pub threshold_battery: Threshold
+    pub threshold_battery: Threshold,
+    pub threshold_wlan_signal: Threshold
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -36,7 +38,8 @@ struct RawConfig {
     threshold_disk: Option<serde_json::Value>,
     threshold_temperature: Option<serde_json::Value>,
     threshold_avg_load: Option<serde_json::Value>,
-    threshold_battery: Option<serde_json::Value>
+    threshold_battery: Option<serde_json::Value>,
+    threshold_wlan_signal: Option<serde_json::Value>
 }
 
 impl Threshold {
@@ -141,6 +144,7 @@ impl Config {
             threshold_temperature: Threshold::from_json_with_default(raw.threshold_temperature, Some(DEFAULT_TEMPERATURE_RANGE), false),
             threshold_avg_load: Threshold::from_json_with_default(raw.threshold_avg_load, Some(DEFAULT_AVG_LOAD_RANGE), false),
             threshold_battery: Threshold::from_json_with_default(raw.threshold_battery, Some(DEFAULT_BATTERY_RANGE), true),
+            threshold_wlan_signal: Threshold::from_json_with_default(raw.threshold_wlan_signal, Some(DEFAULT_WLAN_SIGNAL_RANGE), true)
         }
     }
 }
