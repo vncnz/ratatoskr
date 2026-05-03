@@ -8,12 +8,12 @@ In Norse mythology, Ratatoskr is a squirrel that lives on the world tree, Yggdra
 
 The aim of this project is to collect some metrics and supply them to other processes. Every process can read this file, ensuring consistency and sync in data visualization between launcher and statusbar in my machine and keeping these processes free of a lot of code.
 
-The project contains now two variants of Ratatoskr: legacy-ratatoskr and sock-ratatoskr
+The project contains now two variants of Ratatoskr: legacy-ratatoskr and ratatoskr
 
-## legacy-ratatoskr
+## legacy-ratatoskr (deprecated)
 It's the legacy version of Ratatoskr, who writes all information in the file /tmp/ratatoskr.json
 
-## sock-ratatoskr
+## ratatoskr (ex sock-ratatoskr)
 It's the new version of Ratatoskr, who sends data through a socket located in /tmp/ratatoskr.sock
 
 Each message through the socket is send in following (JSON) format:
