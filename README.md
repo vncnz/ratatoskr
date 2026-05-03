@@ -57,6 +57,7 @@ You can configure warning ranges with a json file in ```~/.config/ratatoskr/conf
     "threshold_temperature": [min, max] | null,
     "threshold_avg_load": [min, max] | null,
     "threshold_battery": [min, max] | null,
+    "threshold_wlan_signal": [min, max] / null,
     "threshold_volume_headphones": [min, max] | null,
     "threshold_volume_speakers": [min, max] | null,
     "threshold_bluetooth_battery": [min, max] | null,
@@ -73,6 +74,7 @@ As example and default values reference, check the following:
     "threshold_temperature": [80, 99],
     "threshold_avg_load": [0.0, 1.0],
     "threshold_battery": [20, 70],
+    "threshold_wlan_signal": [20, 60],
     "threshold_volume_headphones": [20, 90],
     "threshold_volume_speakers": [20, 90],
     "threshold_bluetooth_battery": [10, 30],
@@ -81,6 +83,13 @@ As example and default values reference, check the following:
 ```
 
 Every number can be represented as integer or decimal value.
+
+Warning value is:
+- 0.0 if resource value is less than the first threshold value
+- between 0.0 and 1.0 if resource value is between the two threshold values
+- 1.0 if resource value is greater than the second threshold value
+
+For some resources, the logic is the opposite. These resources are battery, bluetooth_battery, wlan_signal.
 
 If you set true as write_json, ratatoskr will write to disk /tmp/ratatoskr.json every 500 milliseconds, like legacy-ratatoskr was doing in the past. Socket sending will be always active, if a process is listening to.
 
