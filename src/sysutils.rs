@@ -16,10 +16,11 @@ pub fn get_ram_info () -> Option<RamStats> {
     let us = sys.used_swap();
     let mp = 100 * um / tm;
 
+    let config: &Config = Config::global();
+
     if ts > 0 {
         let sp = 100 * us / ts;
 
-        let config: &Config = Config::global();
         // let mem_warn = utils::get_warn_level(60.0, 90.0, mp as f64, false);
         let mem_warn = config.threshold_ram.get_warn_level(mp as f64);
         // eprintln!("{mp}, {mem_warn}");
@@ -33,8 +34,8 @@ pub fn get_ram_info () -> Option<RamStats> {
             used_swap: us,
             mem_percent: mp,
             swap_percent: sp,
-            mem_color: utils::get_color_gradient(60.0, 90.0, mp as f64, false),
-            swap_color: utils::get_color_gradient(60.0, 90.0, sp as f64, false),
+            mem_color: config.threshold_swap.get_color(mp as f64),
+            swap_color: config.threshold_swap.get_color(sp as f64),
             mem_warn,
             swap_warn,
             warn
@@ -48,8 +49,9 @@ pub fn get_ram_info () -> Option<RamStats> {
             used_swap: 0,
             mem_percent: mp,
             swap_percent: 0,
-            mem_color: utils::get_color_gradient(60.0, 90.0, mp as f64, false),
-            swap_color: utils::get_color_gradient(0.0, 1.0, 0.0, false),
+            
+            mem_color: config.threshold_swap.get_color(mp as f64),
+            swap_color: config.threshold_swap.get_color(0.0),
             mem_warn,
             swap_warn: 0.0,
             warn: mem_warn
