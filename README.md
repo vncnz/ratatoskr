@@ -91,6 +91,18 @@ Warning value is:
 
 For some resources, the logic is the opposite. These resources are battery, bluetooth_battery, wlan_signal.
 
+### Load AVG
+
+For warning computation, load average is normalized by the number of cpu and is kept in consideration if the 1m value is greater or less than the 5m value. The exact computation is the following:
+
+```rust
+let incrementing_factor = ((m1 / m5 - 1.0) as f64).clamp(-0.5, 1.0);
+let absolute_factor = (((m1 - 1.0) / (ncpu - 1.0)) as f64).clamp(0.0, 1.0);
+let overall_factor = ((0.5 * incrementing_factor as f64) + 1.0 * absolute_factor).clamp(0.0, 1.0);
+```
+
+### JSON output
+
 If you set true as write_json, ratatoskr will write to disk /tmp/ratatoskr.json every 500 milliseconds, like legacy-ratatoskr was doing in the past. Socket sending will be always active, if a process is listening to.
 
 ## Tips
