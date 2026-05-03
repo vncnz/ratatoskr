@@ -41,7 +41,8 @@ pub fn get_ram_info () -> Option<RamStats> {
             warn
         })
     } else {
-        let mem_warn = utils::get_warn_level(60.0, 90.0, mp as f64, false);
+        // let mem_warn = utils::get_warn_level(60.0, 90.0, mp as f64, false);
+        let mem_warn = config.threshold_ram.get_warn_level(mp as f64);
         Some(RamStats {
             total_memory: tm,
             used_memory: um,
@@ -595,15 +596,17 @@ pub fn spawn_volume_listener(tx: Sender<VolumeStats>) {
 
 fn read_volume_obj() -> Option<VolumeStats> {
     // eprint!("Reading volume");
+    let config: &Config = Config::global();
     let volume = read_volume()?;
     let headphones = read_headphones()?;
 
     let warn = if volume == 0 {
         0.0
     } else if headphones == 1 {
-        utils::get_warn_level(20.0, 90.0, volume as f64, false)
+        // utils::get_warn_level(20.0, 90.0, volume as f64, false)
+        config.threshold_volume_headphones.get_warn_level(volume as f64)
     } else {
-        utils::get_warn_level(0.0, 90.0, volume as f64, false).max(0.4)
+        config.threshold_volume_speakers.get_warn_level(volume as f64).max(0.4)
     };
 
     Some(VolumeStats {
