@@ -91,6 +91,7 @@ pub fn get_disk_info () -> Option<DiskStats> {
 }
 
 pub fn get_sys_temperatures () -> Option<TempStats> {
+    let config: &Config = Config::global();
     let components = sysinfo::Components::new_with_refreshed_list();
     for component in &components {
         if component.label() == "Tctl" {
@@ -99,13 +100,14 @@ pub fn get_sys_temperatures () -> Option<TempStats> {
                                          if temp < 85.0 { "" } else
                                          if temp < 90.0 { "" } else
                                          if temp < 95.0 { "" } else { "" };
-                let color = utils::get_color_gradient(80.0, 99.0, temp as f64, false);
+                let color = config.threshold_temperature.get_color(temp as f64); // utils::get_color_gradient(80.0, 99.0, temp as f64, false);
+                let warn = config.threshold_temperature.get_warn_level(temp as f64); // utils::get_warn_level(80.0, 99.0, temp as f64, false)
                 return Some(TempStats {
                     sensor: component.label().into(),
                     value: temp,
                     color: Some(color),
                     icon: icon.into(),
-                    warn: utils::get_warn_level(80.0, 99.0, temp as f64, false)
+                    warn
                 });
             } else {
                 return Some(TempStats {
