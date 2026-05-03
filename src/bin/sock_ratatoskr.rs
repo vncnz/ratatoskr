@@ -15,19 +15,6 @@ use std::os::unix::net::{UnixListener, UnixStream};
 use std::io::Write;
 use ratatoskr::config::Config;
 
-/*
-pub ram: Option<RamStats>,
-    pub disk: Option<DiskStats>,
-    pub temperature: Option<TempStats>,
-    pub weather: Option<WeatherStats>,
-    pub loadavg: Option<AvgLoadStats>,
-    pub volume: Option<VolumeStats>,
-    pub battery: Option<BatteryStats>,
-    pub network: Option<NetworkStats>,
-    pub display: Option<EmbeddedDisplayStats>,
-    pub written_at: u64,
-    pub metronome: bool */
-
 fn send_burst (s: &SystemStats, tx: mpsc::Sender<String>) {
     println!("About to send burst");
 
