@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use chrono::Utc;
+use ratatoskr::utils::log_to_file;
 use sysinfo::Disk;
 
 use std::fs;
@@ -12,6 +13,7 @@ use ratatoskr::sysutils::*;
 use std::sync::{mpsc};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::io::Write;
+use ratatoskr::config::Config;
 
 /*
 pub ram: Option<RamStats>,
@@ -232,6 +234,10 @@ fn disk_changed (old: &DiskStats, new: &DiskStats) -> bool {
 }
 
 fn main() {
+    let config = Config::init("~/.config/ratatoskr/config.json");
+    log_to_file(format!("Loaded configuration: {:?}", config));
+    println!("Loaded configuration: {:?}", config);
+
     // let output_path = "/tmp/ratatoskr.json";
     // let output_niri_path = "/tmp/windows.json";
     let stats = Arc::new(Mutex::new(SystemStats::default()));

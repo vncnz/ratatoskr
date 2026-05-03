@@ -113,3 +113,23 @@ pub fn write_niri_json_atomic<P: AsRef<Path>>(path: P, stats: &niri_ipc::state::
 
     Ok(())
 }
+
+use std::fs::OpenOptions;
+// use std::io::Write;
+
+pub fn log_to_file(msg: String) {
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("/tmp/ratatoskr.log")
+        .expect("Impossible to write logs");
+    writeln!(file, "[{}] {}", chrono::Local::now().format("%H:%M:%S%.3f"), msg).unwrap();
+}
+
+#[macro_export]
+macro_rules! dbg_println {
+    ($($arg:tt)*) => {
+        #[cfg(debug_assertions)]
+        println!($($arg)*);
+    };
+}

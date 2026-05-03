@@ -3,7 +3,7 @@ use std::{process::Command};
 use sysinfo::{Disks, System};
 use chrono::Utc;
 
-use crate::{AvgLoadStats, BatteryDevice, BatteryStats, BluetoothStats, DeviceKind, DiskStats, EmbeddedDisplayStats, NetworkStats, RamStats, TempStats, VolumeObj, VolumeStats, WeatherStats, utils};
+use crate::{AvgLoadStats, BatteryDevice, BatteryStats, BluetoothStats, DeviceKind, DiskStats, EmbeddedDisplayStats, NetworkStats, RamStats, TempStats, VolumeObj, VolumeStats, WeatherStats, config::Config, utils};
 
 
 
@@ -19,7 +19,10 @@ pub fn get_ram_info () -> Option<RamStats> {
     if ts > 0 {
         let sp = 100 * us / ts;
 
-        let mem_warn = utils::get_warn_level(60.0, 90.0, mp as f64, false);
+        let config: &Config = Config::global();
+        // let mem_warn = utils::get_warn_level(60.0, 90.0, mp as f64, false);
+        let mem_warn = config.threshold_ram.get_warn_level(mp as f64);
+        eprintln!("{mp}, {mem_warn}");
         let swap_warn = utils::get_warn_level(60.0, 90.0, sp as f64, false);
         let warn = f64::max(mem_warn, swap_warn);
         Some(RamStats {

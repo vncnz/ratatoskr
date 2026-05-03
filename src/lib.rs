@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod utils;
 pub mod sysutils;
+pub mod config;
 
 #[derive(Default, Serialize)]
 pub struct SystemStats {
