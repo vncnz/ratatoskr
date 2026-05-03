@@ -226,6 +226,7 @@ pub fn get_load_avg() -> Option<AvgLoadStats> {
             .unwrap_or(1) } // fallback: almeno 1 core
     } */
     if let Ok(output) = std::fs::read_to_string("/proc/loadavg") {
+        let config: &Config = Config::global();
         let parts: Vec<&str> = output.split_whitespace().collect();
         let ncpu = *CORE_COUNT as f64;
 
@@ -240,7 +241,7 @@ pub fn get_load_avg() -> Option<AvgLoadStats> {
         let absolute_factor = (((m1 - 1.0) / (ncpu - 1.0)) as f64).clamp(0.0, 1.0);
         let overall_factor = ((0.5 * incrementing_factor as f64) + 1.0 * absolute_factor).clamp(0.0, 1.0);
         // println!("0.5*{incrementing_factor} + 1.0*{absolute_factor} = {overall_factor}");
-        let color = utils::get_color_gradient(0.0, 1.0, overall_factor, false);
+        let color = config.threshold_avg_load.get_color(overall_factor);
 
         Some(AvgLoadStats {
             m1: m1,
@@ -294,6 +295,7 @@ pub fn get_battery() -> Option<BatteryStats> {
     }
 
     if let Some(Ok(battery)) = batteries.unwrap().next() {
+        let config: &Config = Config::global();
 
         let percentage = ((battery.state_of_charge().value * 100.0) as f32).round() as i32;
         let capacity = battery.energy_full().value as f32;
@@ -338,7 +340,7 @@ pub fn get_battery() -> Option<BatteryStats> {
             _ => "󱧥"
         }).to_string();
 
-        let color = Some(utils::get_color_gradient(20.0, 70.0, percentage as f64, true));
+        let color = Some(config.threshold_battery.get_color(percentage as f64)); // utils::get_color_gradient(20.0, 70.0, percentage as f64, true)
 
         Some(BatteryStats {
             percentage,
@@ -350,7 +352,7 @@ pub fn get_battery() -> Option<BatteryStats> {
             icon,
             color,
             watt,
-            warn: (100.0 - (percentage as f64)) / 100.0
+            warn: config.threshold_battery.get_warn_level(percentage as f64)
         })
     } else {
         Some(BatteryStats {

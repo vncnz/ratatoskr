@@ -10,6 +10,8 @@ const DEFAULT_RAM_RANGE: [f64; 2] = [60.0, 90.0];
 const DEFAULT_SWAP_RANGE: [f64; 2] = [60.0, 90.0];
 const DEFAULT_DISK_RANGE: [f64; 2] = [60.0, 90.0];
 const DEFAULT_TEMPERATURE_RANGE: [f64; 2] = [80.0, 99.0];
+const DEFAULT_AVG_LOAD_RANGE: [f64; 2] = [0.0, 1.0];
+const DEFAULT_BATTERY_RANGE: [f64; 2] = [20.0, 70.0];
 
 #[derive(Debug, Clone)]
 pub struct Threshold {
@@ -22,7 +24,9 @@ pub struct Config {
     pub threshold_ram: Threshold,
     pub threshold_swap: Threshold,
     pub threshold_disk: Threshold,
-    pub threshold_temperature: Threshold
+    pub threshold_temperature: Threshold,
+    pub threshold_avg_load: Threshold,
+    pub threshold_battery: Threshold
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -30,7 +34,9 @@ struct RawConfig {
     threshold_ram: Option<serde_json::Value>,
     threshold_swap: Option<serde_json::Value>,
     threshold_disk: Option<serde_json::Value>,
-    threshold_temperature: Option<serde_json::Value>
+    threshold_temperature: Option<serde_json::Value>,
+    threshold_avg_load: Option<serde_json::Value>,
+    threshold_battery: Option<serde_json::Value>
 }
 
 impl Threshold {
@@ -133,6 +139,8 @@ impl Config {
             threshold_swap: Threshold::from_json_with_default(raw.threshold_swap, Some(DEFAULT_SWAP_RANGE), false),
             threshold_disk: Threshold::from_json_with_default(raw.threshold_disk, Some(DEFAULT_DISK_RANGE), false),
             threshold_temperature: Threshold::from_json_with_default(raw.threshold_temperature, Some(DEFAULT_TEMPERATURE_RANGE), false),
+            threshold_avg_load: Threshold::from_json_with_default(raw.threshold_avg_load, Some(DEFAULT_AVG_LOAD_RANGE), false),
+            threshold_battery: Threshold::from_json_with_default(raw.threshold_battery, Some(DEFAULT_BATTERY_RANGE), true),
         }
     }
 }
