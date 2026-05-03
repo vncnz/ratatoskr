@@ -4,43 +4,59 @@ use once_cell::sync::OnceCell;
 
 static CONFIG: OnceCell<Config> = OnceCell::new();
 
+const DEFAULT_RAM_RANGE: [f64; 2] = [60.0, 90.0];
+const DEFAULT_SWAP_RANGE: [f64; 2] = [60.0, 90.0];
 
 #[derive(Debug, Clone)]
 pub struct Threshold {
     pub range: Option<Range<f64>>,
-    high_is_better: bool
+    pub high_is_better: bool
 }
 
 #[derive(Debug, Clone)]
 pub struct Config {
-    pub threshold_ram: Threshold
+    pub threshold_ram: Threshold,
+    pub threshold_swap: Threshold
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 struct RawConfig {
-    threshold_ram: Option<serde_json::Value>
+    threshold_ram: Option<serde_json::Value>,
+    threshold_swap: Option<serde_json::Value>
 }
 
 impl Threshold {
-    fn from_json(value: Option<serde_json::Value>, high_is_better: bool) -> Self {
+    /// Cases:
+    /// - Some(Value::Array)    -> use value
+    /// - Some(Value::Null)     -> use None (explicitly disabled by user)
+    /// - None                  -> use default
+    /// - Other                 -> log and use default
+    fn from_json_with_default(
+        value: Option<serde_json::Value>, 
+        default_range: Option<[f64; 2]>, 
+        high_is_better: bool
+    ) -> Self {
         match value {
-            Some(serde_json::Value::Null) => Threshold { range: None, high_is_better },
-            None => Threshold { range: None, high_is_better },
-
-
             Some(serde_json::Value::Array(arr)) if arr.len() == 2 => {
-                let vals: Vec<f64> = arr
-                    .iter()
-                    .filter_map(|v| v.as_f64().map(|x| x as f64))
-                    .collect();
-                Threshold { range: Some(vals[0]..vals[1]), high_is_better }
-            },
-
-            _ => {
-                eprintln!("Invalid value in JSON configuration {:?}", value);
-                Threshold { range: None, high_is_better }
+                let vals: Vec<f64> = arr.iter().filter_map(|v| v.as_f64()).collect();
+                if vals.len() == 2 {
+                    Threshold { range: Some(vals[0]..vals[1]), high_is_better }
+                } else {
+                    Self::fallback_to_default(default_range, high_is_better, "formato numerico errato")
+                }
             }
+            Some(serde_json::Value::Null) => { Threshold { range: None, high_is_better } }
+            None => { Self::fallback_to_default(default_range, high_is_better, "Missed parameter") }
+            _ => { Self::fallback_to_default(default_range, high_is_better, "Invalid parameter") }
         }
+    }
+
+    fn fallback_to_default(default: Option<[f64; 2]>, high_is_better: bool, reason: &str) -> Self {
+        if !reason.contains("assente") {
+            eprintln!("Config Warning: {}, uso il default.", reason);
+        }
+        let range = default.map(|d| d[0]..d[1]);
+        Threshold { range, high_is_better }
     }
 
     pub fn get_warn_level(&self, value: f64) -> f64 {
@@ -61,26 +77,22 @@ impl Config {
     }
 
     pub fn global() -> &'static Config {
-        CONFIG.get().expect("Config non inizializzata")
+        CONFIG.get().expect("Config not initialized")
     }
 
     pub fn load_from_file(path: &str) -> Self {
         let expanded_path = shellexpand::tilde(path);
-        let data = fs::read_to_string(expanded_path.as_ref())
-            .unwrap_or_else(|_| {
-                eprintln!("Cannot read configuration file: {}", path);
-                "{}".to_string()
+        
+        let raw: RawConfig = fs::read_to_string(expanded_path.as_ref())
+            .ok()
+            .and_then(|data| serde_json::from_str(&data).ok())
+            .unwrap_or_else(|| {
+                RawConfig::default()
             });
 
-        let raw: RawConfig = serde_json::from_str(&data).unwrap_or_else(|_| {
-            eprintln!("Config JSON non valido, uso valori di default");
-            RawConfig {
-                threshold_ram: Some(serde_json::json!([60.0, 90.0]))
-            }
-        });
-
-        Config { // TODO: if I explicitly write nulls in config I don't want defaults, If I don't write a specific parameter I want its default!
-            threshold_ram: Threshold::from_json(raw.threshold_ram, false)
+        Config {
+            threshold_ram: Threshold::from_json_with_default(raw.threshold_ram, Some(DEFAULT_RAM_RANGE), false),
+            threshold_swap: Threshold::from_json_with_default(raw.threshold_swap, Some(DEFAULT_SWAP_RANGE), false),
         }
     }
 }

@@ -22,8 +22,9 @@ pub fn get_ram_info () -> Option<RamStats> {
         let config: &Config = Config::global();
         // let mem_warn = utils::get_warn_level(60.0, 90.0, mp as f64, false);
         let mem_warn = config.threshold_ram.get_warn_level(mp as f64);
-        eprintln!("{mp}, {mem_warn}");
-        let swap_warn = utils::get_warn_level(60.0, 90.0, sp as f64, false);
+        // eprintln!("{mp}, {mem_warn}");
+        // let swap_warn = utils::get_warn_level(60.0, 90.0, sp as f64, false);
+        let swap_warn = config.threshold_swap.get_warn_level(sp as f64);
         let warn = f64::max(mem_warn, swap_warn);
         Some(RamStats {
             total_memory: tm,
