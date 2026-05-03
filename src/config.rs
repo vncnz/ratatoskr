@@ -34,7 +34,8 @@ pub struct Config {
     pub threshold_wlan_signal: Threshold,
     pub threshold_volume_headphones: Threshold,
     pub threshold_volume_speakers: Threshold,
-    pub threshold_bluetooth_battery: Threshold
+    pub threshold_bluetooth_battery: Threshold,
+    pub write_json: bool
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -48,7 +49,8 @@ struct RawConfig {
     threshold_wlan_signal: Option<serde_json::Value>,
     threshold_volume_headphones: Option<serde_json::Value>,
     threshold_volume_speakers: Option<serde_json::Value>,
-    threshold_bluetooth_battery: Option<serde_json::Value>
+    threshold_bluetooth_battery: Option<serde_json::Value>,
+    write_json: Option<bool>
 }
 
 impl Threshold {
@@ -157,6 +159,7 @@ impl Config {
             threshold_volume_headphones: Threshold::from_json_with_default(raw.threshold_volume_headphones, Some(DEFAULT_VOLUME_HEADPHONES_RANGE), false),
             threshold_volume_speakers: Threshold::from_json_with_default(raw.threshold_volume_speakers, Some(DEFAULT_VOLUME_SPEAKERS_RANGE), false),
             threshold_bluetooth_battery: Threshold::from_json_with_default(raw.threshold_bluetooth_battery, Some(DEFAULT_BLUETOOTH_BATTERY_RANGE), true),
+            write_json: raw.write_json.unwrap_or(false)
 
         }
     }

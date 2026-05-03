@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use chrono::Utc;
-use ratatoskr::utils::log_to_file;
+use ratatoskr::utils::{log_to_file, write_json_atomic};
 
 use std::fs;
 
@@ -317,6 +317,35 @@ fn main() {
             }
         } */
         thread::sleep(Duration::from_millis(500));
+
+
+
+        if config.write_json {
+            if let Ok(data) = stats.lock() {
+                if let Err(e) = write_json_atomic("/tmp/ratatoskr.json", &*data) {
+                    log_to_file(format!("Failed to write sysinfo JSON: {e}"));
+                    eprintln!("Failed to write sysinfo JSON: {e}");
+                }
+            }
+        }
+        /* if let Ok(mut data) = stats.lock() {
+            data.written_at = get_unix_time();
+            data.metronome = !data.metronome;
+        }
+        let data = stats.lock().unwrap();
+        if let Err(e) = write_json_atomic(output_path, &*data) {
+            eprintln!("Failed to write sysinfo JSON: {e}");
+        } */
+
+        /* if let Some(st) = &niristate {
+            let niridata = st.lock().unwrap();
+            if let Err(e) = write_niri_json_atomic(output_niri_path, &*niridata) {
+                eprintln!("Failed to write niri JSON: {e}");
+            }
+        } */
+
+
+
     }
 }
 
