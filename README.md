@@ -49,7 +49,7 @@ Keys `resource` and `warning` are always present, while icon and data are option
 
 You can configure warning ranges with a json file in ```~/.config/ratatoskr/config.json```:
 
-```json
+```js
 {
     "threshold_ram": [min, max] | null,
     "threshold_swap": [min, max] | null,
@@ -66,7 +66,7 @@ You can configure warning ranges with a json file in ```~/.config/ratatoskr/conf
 ```
 
 As example and default values reference, check the following:
-```json
+```js
 {
     "threshold_ram": [60, 90],
     "threshold_swap": [60, 90],
