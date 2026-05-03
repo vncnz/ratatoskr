@@ -3,7 +3,6 @@ use std::thread;
 use std::time::Duration;
 use chrono::Utc;
 use ratatoskr::utils::log_to_file;
-use sysinfo::Disk;
 
 use std::fs;
 
