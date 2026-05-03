@@ -2,10 +2,13 @@ use std::{fs, ops::Range};
 use serde::Deserialize;
 use once_cell::sync::OnceCell;
 
+use crate::utils::{DEFAULT_WHITE, hsv_to_rgb};
+
 static CONFIG: OnceCell<Config> = OnceCell::new();
 
 const DEFAULT_RAM_RANGE: [f64; 2] = [60.0, 90.0];
 const DEFAULT_SWAP_RANGE: [f64; 2] = [60.0, 90.0];
+const DEFAULT_DISK_RANGE: [f64; 2] = [60.0, 90.0];
 
 #[derive(Debug, Clone)]
 pub struct Threshold {
@@ -16,13 +19,15 @@ pub struct Threshold {
 #[derive(Debug, Clone)]
 pub struct Config {
     pub threshold_ram: Threshold,
-    pub threshold_swap: Threshold
+    pub threshold_swap: Threshold,
+    pub threshold_disk: Threshold
 }
 
 #[derive(Debug, Deserialize, Default)]
 struct RawConfig {
     threshold_ram: Option<serde_json::Value>,
-    threshold_swap: Option<serde_json::Value>
+    threshold_swap: Option<serde_json::Value>,
+    threshold_disk: Option<serde_json::Value>
 }
 
 impl Threshold {
@@ -69,6 +74,36 @@ impl Threshold {
             0.0
         }
     }
+
+    pub fn get_color(&self, value: f64) -> String {
+        if let Some(r) = &self.range {
+            let min = r.start;
+            let max = r.end;
+            let clamped = value.clamp(min, max);
+            let mut ratio = if (max - min).abs() < f64::EPSILON {
+                0.5
+            } else {
+                (clamped - min) / (max - min)
+            };
+
+            if self.high_is_better { ratio = 1.0 - ratio; }
+            let sat;
+            let hue;
+            if DEFAULT_WHITE {
+                sat = f64::max(1.0 - (ratio * ratio * ratio), 0.0);
+                hue = 60.0 * ratio; // 60 -> 0
+            } else {
+                sat = 1.0;
+                hue = 100.0 * ratio; // 100 -> 0
+            }
+            let (r, g, b) = hsv_to_rgb(hue, sat, 1.0);
+
+            format!("#{:02X}{:02X}{:02X}", r, g, b)
+        } else {
+            let (r,g,b) = (128,128,128);
+            format!("#{:02X}{:02X}{:02X}", r, g, b)
+        }
+    }
 }
 
 impl Config {
@@ -93,6 +128,7 @@ impl Config {
         Config {
             threshold_ram: Threshold::from_json_with_default(raw.threshold_ram, Some(DEFAULT_RAM_RANGE), false),
             threshold_swap: Threshold::from_json_with_default(raw.threshold_swap, Some(DEFAULT_SWAP_RANGE), false),
+            threshold_disk: Threshold::from_json_with_default(raw.threshold_disk, Some(DEFAULT_DISK_RANGE), false),
         }
     }
 }

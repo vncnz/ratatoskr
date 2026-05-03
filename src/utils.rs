@@ -4,7 +4,10 @@ use std::path::Path;
 
 use crate::SystemStats;
 
-fn hsv_to_rgb(h: f64, s: f64, v: f64) -> (u8, u8, u8) {
+// "Good" color can be white or green, medium color is always yellow and "bad" color is always red.
+pub static DEFAULT_WHITE: bool = false;
+
+pub fn hsv_to_rgb(h: f64, s: f64, v: f64) -> (u8, u8, u8) {
     let c = v * s;
     let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
     let m = v - c;
@@ -31,9 +34,6 @@ pub fn get_warn_level(min: f64, max: f64, value: f64, reversed: bool) -> f64 {
                           else { 1.0 };
     if reversed { 1.0 - warn_level } else { warn_level }
 }
-
-// "Good" color can be white or green, medium color is always yellow and "bad" color is always red.
-static DEFAULT_WHITE: bool = false;
 
 pub fn get_color_gradient(min: f64, max: f64, value: f64, reversed: bool) -> String {
     let clamped = value.clamp(min, max);

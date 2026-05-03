@@ -59,6 +59,8 @@ pub fn get_ram_info () -> Option<RamStats> {
 
 
 pub fn get_disk_info () -> Option<DiskStats> {
+    let config: &Config = Config::global();
+
     let disks = Disks::new_with_refreshed_list();
     for disk in &disks {
         if (disk as &sysinfo::Disk).mount_point() == std::path::Path::new("/") {
@@ -67,14 +69,16 @@ pub fn get_disk_info () -> Option<DiskStats> {
                     let tos = (disk as &sysinfo::Disk).total_space();
                     let avs = (disk as &sysinfo::Disk).available_space();
                     let up = 100 - (avs * 100 / tos);
+                    let warn = config.threshold_disk.get_warn_level(up as f64);
+                    let color = config.threshold_disk.get_color(up as f64);
                     return Some(DiskStats {
                         // name_str.to_string(),
                         // mount_str.to_string(),
                         total_size: tos,
                         used_size: tos - avs,
                         used_percent: up,
-                        color: utils::get_color_gradient(60.0, 90.0, up as f64, false),
-                        warn: utils::get_warn_level(60.0, 90.0, up as f64, false)
+                        color,
+                        warn
                     })
                 }
             }
