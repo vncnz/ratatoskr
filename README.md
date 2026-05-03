@@ -116,9 +116,12 @@ If you set true as write_json, ratatoskr will write to disk /tmp/ratatoskr.json 
 
 Please note that this is a personal project, for personal use, developed in my (not so much) free time. I'm learning Rust, so you'll not find clean code. I'm improving it over time. You've been warned.
 
+On my laptop, Ratatoskr consumes ~5 MB of RAM.
+The impact on average load is less than 0.001, so virtually zero. I measured the impact on average load as the ratio between the time spent with the Ratatoskr process in "Running" or "disk-sleep" status and the total measurement time.
+
 ## Known bugs
 - ~~Bluetooth devices object is sent with warning 1.0 instead of 0.0~~ Solved!
-- With bluetooth mouse, sometimes two icons appear (mouse and generic bt device)
+- Sometimes, on bluetooth mouse connection, two icons appear (mouse and generic bt device)
 
 ## TODOs
 - ~~Send only relevant updates (for example, ignore memory updates if less then 1% of change)~~ Done!
