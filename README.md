@@ -57,7 +57,7 @@ You can configure warning ranges with a json file in ```~/.config/ratatoskr/conf
     "threshold_temperature": [min, max] | null,
     "threshold_avg_load": [min, max] | null,
     "threshold_battery": [min, max] | null,
-    "threshold_wlan_signal": [min, max] / null,
+    "threshold_wlan_signal": [min, max] | null,
     "threshold_volume_headphones": [min, max] | null,
     "threshold_volume_speakers": [min, max] | null,
     "threshold_bluetooth_battery": [min, max] | null,
