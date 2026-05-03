@@ -45,6 +45,45 @@ The key `data' holds the original message collected for a specific resource, for
 
 Keys `resource` and `warning` are always present, while icon and data are optional and depends on resource type.
 
+## Configuration
+
+You can configure warning ranges with a json file in ```~/.config/ratatoskr/config.json```:
+
+```json
+{
+    "threshold_ram": [min, max] | null,
+    "threshold_swap": [min, max] | null,
+    "threshold_disk": [min, max] | null,
+    "threshold_temperature": [min, max] | null,
+    "threshold_avg_load": [min, max] | null,
+    "threshold_battery": [min, max] | null,
+    "threshold_volume_headphones": [min, max] | null,
+    "threshold_volume_speakers": [min, max] | null,
+    "threshold_bluetooth_battery": [min, max] | null,
+    "write_json": true | false
+}
+```
+
+As example and default values reference, check the following:
+```json
+{
+    "threshold_ram": [60, 90],
+    "threshold_swap": [60, 90],
+    "threshold_disk": [60, 90],
+    "threshold_temperature": [80, 99],
+    "threshold_avg_load": [0.0, 1.0],
+    "threshold_battery": [20, 70],
+    "threshold_volume_headphones": [20, 90],
+    "threshold_volume_speakers": [20, 90],
+    "threshold_bluetooth_battery": [10, 30],
+    "write_json": false
+}
+```
+
+Every number can be represented as integer or decimal value.
+
+If you set true as write_json, ratatoskr will write to disk /tmp/ratatoskr.json every 500 milliseconds, like legacy-ratatoskr was doing in the past. Socket sending will be always active, if a process is listening to.
+
 ## Tips
 - You can check a socket output with following command: ```socat - UNIX-CONNECT:/tmp/ratatoskr.sock```
 
