@@ -863,11 +863,14 @@ fn read_device(conn: &Connection, path: &OwnedObjectPath) -> Option<BatteryDevic
 
     let percentage: f64 = dev.get_property("Percentage").ok()?;
     let model: String = dev.get_property("Model").unwrap_or_else(|_| "Unknown".into());
+    
+    let config: &Config = Config::global();
+    let warn = config.threshold_bluetooth_battery.get_warn_level(percentage);
 
     Some(BatteryDevice {
         name: model,
         kind: map_device_type(dev_type),
         percentage,
-        warn: crate::utils::get_warn_level(10.0, 30.0, percentage, true)
+        warn
     })
 }

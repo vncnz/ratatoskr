@@ -15,6 +15,7 @@ const DEFAULT_BATTERY_RANGE: [f64; 2] = [20.0, 70.0];
 const DEFAULT_WLAN_SIGNAL_RANGE: [f64; 2] = [20.0, 60.0];
 const DEFAULT_VOLUME_HEADPHONES_RANGE: [f64; 2] = [20.0, 90.0];
 const DEFAULT_VOLUME_SPEAKERS_RANGE: [f64; 2] = [20.0, 90.0];
+const DEFAULT_BLUETOOTH_BATTERY_RANGE: [f64; 2] = [10.0, 35.0];
 
 #[derive(Debug, Clone)]
 pub struct Threshold {
@@ -32,7 +33,8 @@ pub struct Config {
     pub threshold_battery: Threshold,
     pub threshold_wlan_signal: Threshold,
     pub threshold_volume_headphones: Threshold,
-    pub threshold_volume_speakers: Threshold
+    pub threshold_volume_speakers: Threshold,
+    pub threshold_bluetooth_battery: Threshold
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -45,7 +47,8 @@ struct RawConfig {
     threshold_battery: Option<serde_json::Value>,
     threshold_wlan_signal: Option<serde_json::Value>,
     threshold_volume_headphones: Option<serde_json::Value>,
-    threshold_volume_speakers: Option<serde_json::Value>
+    threshold_volume_speakers: Option<serde_json::Value>,
+    threshold_bluetooth_battery: Option<serde_json::Value>
 }
 
 impl Threshold {
@@ -152,7 +155,8 @@ impl Config {
             threshold_battery: Threshold::from_json_with_default(raw.threshold_battery, Some(DEFAULT_BATTERY_RANGE), true),
             threshold_wlan_signal: Threshold::from_json_with_default(raw.threshold_wlan_signal, Some(DEFAULT_WLAN_SIGNAL_RANGE), true),
             threshold_volume_headphones: Threshold::from_json_with_default(raw.threshold_volume_headphones, Some(DEFAULT_VOLUME_HEADPHONES_RANGE), false),
-            threshold_volume_speakers: Threshold::from_json_with_default(raw.threshold_volume_speakers, Some(DEFAULT_VOLUME_SPEAKERS_RANGE), false)
+            threshold_volume_speakers: Threshold::from_json_with_default(raw.threshold_volume_speakers, Some(DEFAULT_VOLUME_SPEAKERS_RANGE), false),
+            threshold_bluetooth_battery: Threshold::from_json_with_default(raw.threshold_bluetooth_battery, Some(DEFAULT_BLUETOOTH_BATTERY_RANGE), true),
 
         }
     }
