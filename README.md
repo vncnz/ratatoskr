@@ -18,7 +18,7 @@ The project contains now two variants of Ratatoskr: legacy-ratatoskr and ratatos
 It's the legacy version of Ratatoskr, who writes all information in the file /tmp/ratatoskr.json
 
 ## ratatoskr (ex sock-ratatoskr)
-It's the new version of Ratatoskr, who sends data through a socket located in /tmp/ratatoskr.sock
+It's the new version of Ratatoskr, who sends data through a socket located in /tmp/ratatoskr.sock (but can write a JSON too, in /tmp/ratatoskr.json).
 
 Each message through the socket is send in following (JSON) format:
 ```
