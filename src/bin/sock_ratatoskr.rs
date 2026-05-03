@@ -19,7 +19,7 @@ fn send_burst (s: &SystemStats, tx: mpsc::Sender<String>) {
     println!("About to send burst");
 
     // Sending only resources with a pooling time longer than 1s
-    let fields: [(&str, serde_json::Value); 9] = [
+    let fields: [(&str, serde_json::Value); 10] = [
         ("ram", serde_json::json!(s.ram)),
         ("disk", serde_json::json!(s.disk)),
         ("temperature", serde_json::json!(s.temperature)),
@@ -29,6 +29,8 @@ fn send_burst (s: &SystemStats, tx: mpsc::Sender<String>) {
         ("battery", serde_json::json!(s.battery)),
         ("network", serde_json::json!(s.network)),
         ("display", serde_json::json!(s.display)),
+        ("bluetooth", serde_json::json!(s.bluetooth_batteries))
+
     ];
 
     // send("burst start".to_string(), value::Value::Null, Some(tx.clone()));
