@@ -4,6 +4,9 @@ Ratatoskr is a high-performance system monitoring daemon written in Rust. It agg
 
 Designed to provide "ready-to-use" metrics, Ratatoskr eliminates the need for individual applications to implement low-level monitoring logic. It broadcasts system states through Unix sockets and an optional, continuously updated JSON interface, making it an ideal backend for status bars, desktop widgets, or custom system tools.
 
+On my laptop, Ratatoskr consumes ~5 MB of RAM.
+The impact on average load is less than 0.001, so virtually zero. I measured the impact on average load as the ratio between the time spent with the Ratatoskr process in "Running" or "disk-sleep" status and the total measurement time.
+
 ## About the name
 
 In Norse mythology, Ratatoskr is a squirrel that lives on the world tree, Yggdrasil. He is known for running up and down the tree, carrying messages (often insults) between the eagle perched at the top of the tree and the serpent Níðhöggr who dwells beneath one of the tree's roots.
@@ -115,9 +118,6 @@ If you set true as write_json, ratatoskr will write to disk /tmp/ratatoskr.json 
 ## Note
 
 Please note that this is a personal project, for personal use, developed in my (not so much) free time. I'm learning Rust, so you'll not find clean code. I'm improving it over time. You've been warned.
-
-On my laptop, Ratatoskr consumes ~5 MB of RAM.
-The impact on average load is less than 0.001, so virtually zero. I measured the impact on average load as the ratio between the time spent with the Ratatoskr process in "Running" or "disk-sleep" status and the total measurement time.
 
 ## Known bugs
 - ~~Bluetooth devices object is sent with warning 1.0 instead of 0.0~~ Solved!
