@@ -1,5 +1,9 @@
 # ratatoskr - ᚱᚨᛏᚨᛏᛟᛊᚲᚱ
 
+Ratatoskr is a high-performance system monitoring daemon written in Rust. It aggregates and evaluates real-time data on system resources (including RAM, swap, disk usage, battery status, and temperatures) to serve them directly to other processes.
+
+Designed to provide "ready-to-use" metrics, Ratatoskr eliminates the need for individual applications to implement low-level monitoring logic. It broadcasts system states through Unix sockets and an optional, continuously updated JSON interface, making it an ideal backend for status bars, desktop widgets, or custom system tools.
+
 ## About the name
 
 In Norse mythology, Ratatoskr is a squirrel that lives on the world tree, Yggdrasil. He is known for running up and down the tree, carrying messages (often insults) between the eagle perched at the top of the tree and the serpent Níðhöggr who dwells beneath one of the tree's roots.
