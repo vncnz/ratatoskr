@@ -89,7 +89,7 @@ If you set true as write_json, ratatoskr will write to disk /tmp/ratatoskr.json 
 
 ## Note
 
-Please note that this is a personal project, for personal use, developed in my (not so much) free time. You'll not find clean code or a flexible, modular system here. You'll find lots of experiments, abandoned ideas, dead code, temporary hacks and workarounds. Oh, and last but not least, I'm just learning both Rust and RataTUI. You've been warned.
+Please note that this is a personal project, for personal use, developed in my (not so much) free time. I'm learning Rust, so you'll not find clean code. I'm improving it over time. You've been warned.
 
 ## Known bugs
 - ~~Bluetooth devices object is sent with warning 1.0 instead of 0.0~~ Solved!
@@ -98,8 +98,8 @@ Please note that this is a personal project, for personal use, developed in my (
 ## TODOs
 - ~~Send only relevant updates (for example, ignore memory updates if less then 1% of change)~~ Done!
 - ~~Send only relevant updates for display, network and disk, too~~ Done!
-- Add support for configurable alert thresholds for system resources
-- Make socket/json configurable
-- Make config optional
+- ~~Add support for configurable alert thresholds for system resources~~ Done!
+- ~~Make socket/json configurable~~ Done!
+- ~~Make config optional~~ Done!
 - Publish on AUR
 - Create a GIF?
