@@ -139,4 +139,3 @@ Please note that this is a personal project, for personal use, developed in my (
 - ~~Make config optional~~ Done!
 - Publish on AUR
 - Create a GIF?
-- Show again last notification on cmd retrieving?
