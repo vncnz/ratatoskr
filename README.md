@@ -18,13 +18,16 @@ The aim of this project is to collect some metrics and supply them to other proc
 The project contains now two variants of Ratatoskr: legacy-ratatoskr and ratatoskr
 
 ## legacy-ratatoskr (deprecated)
+
 It's the legacy version of Ratatoskr, who writes all information in the file /tmp/ratatoskr.json
 
 ## ratatoskr (ex sock-ratatoskr)
+
 It's the new version of Ratatoskr, who sends data through a socket located in /tmp/ratatoskr.sock (but can write a JSON too, in /tmp/ratatoskr.json).
 
 Each message through the socket is send in following (JSON) format:
-```
+
+```js
 {
     resource: String,
     warning: f64,
@@ -35,7 +38,7 @@ Each message through the socket is send in following (JSON) format:
 
 The key `data' holds the original message collected for a specific resource, for example:
 
-```
+```js
 {
     "resource":"temperature",
     "warning":0.0,
@@ -73,6 +76,7 @@ You can configure warning ranges with a json file in ```~/.config/ratatoskr/conf
 ```
 
 As example and default values reference, check the following:
+
 ```js
 {
     "threshold_ram": [60, 90],
@@ -92,6 +96,7 @@ As example and default values reference, check the following:
 Every number can be represented as integer or decimal value.
 
 Warning value is:
+
 - 0.0 if resource value is less than the first threshold value
 - between 0.0 and 1.0 if resource value is between the two threshold values
 - 1.0 if resource value is greater than the second threshold value
@@ -113,6 +118,7 @@ let overall_factor = ((0.5 * incrementing_factor as f64) + 1.0 * absolute_factor
 If you set true as write_json, ratatoskr will write to disk /tmp/ratatoskr.json every 500 milliseconds, like legacy-ratatoskr was doing in the past. Socket sending will be always active, if a process is listening to.
 
 ## Tips
+
 - You can check a socket output with following command: ```socat - UNIX-CONNECT:/tmp/ratatoskr.sock```
 
 ## Note
@@ -120,10 +126,12 @@ If you set true as write_json, ratatoskr will write to disk /tmp/ratatoskr.json 
 Please note that this is a personal project, for personal use, developed in my (not so much) free time. I'm learning Rust, so you'll not find clean code. I'm improving it over time. You've been warned.
 
 ## Known bugs
+
 - ~~Bluetooth devices object is sent with warning 1.0 instead of 0.0~~ Solved!
 - Sometimes, on bluetooth mouse connection, two icons appear (mouse and generic bt device)
 
 ## TODOs
+
 - ~~Send only relevant updates (for example, ignore memory updates if less then 1% of change)~~ Done!
 - ~~Send only relevant updates for display, network and disk, too~~ Done!
 - ~~Add support for configurable alert thresholds for system resources~~ Done!
