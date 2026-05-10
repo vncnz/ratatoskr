@@ -3,7 +3,7 @@ use std::{process::Command};
 use sysinfo::{Disks, System};
 use chrono::Utc;
 
-use crate::{AvgLoadStats, BatteryDevice, BatteryStats, BluetoothStats, DeviceKind, DiskStats, EmbeddedDisplayStats, NetworkStats, RamStats, TempStats, VolumeObj, VolumeStats, WeatherStats, config::Config, utils};
+use crate::{AvgLoadStats, BatteryDevice, BatteryStats, BluetoothStats, UPowerDeviceKind, DiskStats, EmbeddedDisplayStats, NetworkStats, RamStats, TempStats, VolumeObj, VolumeStats, WeatherStats, config::Config, utils};
 
 
 
@@ -661,16 +661,6 @@ fn read_headphones() -> Option<i8> {
 
 // Bluetooth
 
-fn map_device_type(t: u32) -> DeviceKind {
-    match t {
-        5 => DeviceKind::Mouse,
-        6 => DeviceKind::Keyboard,
-        11 => DeviceKind::Headphones, // spesso audio
-        12 => DeviceKind::Gamepad,
-        _ => DeviceKind::Unknown,
-    }
-}
-
 use zbus::{blocking::Connection, blocking::Proxy};
 
 /* pub fn read_external_batteries() -> zbus::Result<Vec<BatteryDevice>> {
@@ -869,7 +859,7 @@ fn read_device(conn: &Connection, path: &OwnedObjectPath) -> Option<BatteryDevic
 
     Some(BatteryDevice {
         name: model,
-        kind: map_device_type(dev_type),
+        kind: UPowerDeviceKind::from(dev_type),
         percentage,
         warn
     })

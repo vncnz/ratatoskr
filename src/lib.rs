@@ -138,18 +138,79 @@ pub struct EmbeddedDisplayStats {
 #[derive(Debug, Clone, Serialize)]
 pub struct BatteryDevice {
     pub name: String,
-    pub kind: DeviceKind,
+    pub kind: UPowerDeviceKind,
     pub percentage: f64,
     pub warn: f64
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub enum DeviceKind {
+pub enum UPowerDeviceKind {
+    Unknown,
+    LinePower,
+    Battery,
+    Ups,
+    Monitor,
     Mouse,
     Keyboard,
+    Pda,
+    Phone,
+    MediaPlayer,
+    Tablet,
+    Computer,
+    GamingInput,
+    Pen,
+    Touchpad,
+    Modem,
+    Network,
+    Headset,
+    Speakers,
     Headphones,
-    Gamepad,
-    Unknown,
+    Video,
+    OtherAudio,
+    RemoteControl,
+    Printer,
+    Scanner,
+    Camera,
+    Wearable,
+    Toy,
+    BluetoothGeneric,
+}
+
+impl From<u32> for UPowerDeviceKind {
+    fn from(value: u32) -> Self {
+        match value {
+            0 => UPowerDeviceKind::Unknown,
+            1 => UPowerDeviceKind::LinePower,
+            2 => UPowerDeviceKind::Battery,
+            3 => UPowerDeviceKind::Ups,
+            4 => UPowerDeviceKind::Monitor,
+            5 => UPowerDeviceKind::Mouse,
+            6 => UPowerDeviceKind::Keyboard,
+            7 => UPowerDeviceKind::Pda,
+            8 => UPowerDeviceKind::Phone,
+            9 => UPowerDeviceKind::MediaPlayer,
+            10 => UPowerDeviceKind::Tablet,
+            11 => UPowerDeviceKind::Computer,
+            12 => UPowerDeviceKind::GamingInput,
+            13 => UPowerDeviceKind::Pen,
+            14 => UPowerDeviceKind::Touchpad,
+            15 => UPowerDeviceKind::Modem,
+            16 => UPowerDeviceKind::Network,
+            17 => UPowerDeviceKind::Headset,
+            18 => UPowerDeviceKind::Speakers,
+            19 => UPowerDeviceKind::Headphones,
+            20 => UPowerDeviceKind::Video,
+            21 => UPowerDeviceKind::OtherAudio,
+            22 => UPowerDeviceKind::RemoteControl,
+            23 => UPowerDeviceKind::Printer,
+            24 => UPowerDeviceKind::Scanner,
+            25 => UPowerDeviceKind::Camera,
+            26 => UPowerDeviceKind::Wearable,
+            27 => UPowerDeviceKind::Toy,
+            28 => UPowerDeviceKind::BluetoothGeneric,
+            _ => UPowerDeviceKind::Unknown,
+        }
+    }
 }
 
 #[derive(Default, Serialize)]
