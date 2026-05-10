@@ -128,7 +128,7 @@ Please note that this is a personal project, for personal use, developed in my (
 ## Known bugs
 
 - ~~Bluetooth devices object is sent with warning 1.0 instead of 0.0~~ Solved!
-- Sometimes, on bluetooth mouse connection, two icons appear (mouse and generic bt device)
+- ~~Sometimes, on bluetooth mouse connection, two icons appear (mouse and generic bt device)~~ Nope, it was really another device of a type that was not managed!
 
 ## TODOs
 
