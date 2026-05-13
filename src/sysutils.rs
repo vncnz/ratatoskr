@@ -3,7 +3,7 @@ use std::{process::Command};
 use sysinfo::{Disks, System};
 use chrono::Utc;
 
-use crate::{AvgLoadStats, BatteryDevice, BatteryStats, BluetoothStats, UPowerDeviceKind, DiskStats, EmbeddedDisplayStats, NetworkStats, RamStats, TempStats, VolumeObj, VolumeStats, WeatherStats, config::Config, utils};
+use crate::{AvgLoadStats, BatteryDevice, BatteryStats, UPowerStats, UPowerDeviceKind, DiskStats, EmbeddedDisplayStats, NetworkStats, RamStats, TempStats, VolumeObj, VolumeStats, WeatherStats, config::Config, utils};
 
 
 
@@ -732,7 +732,7 @@ use zbus::{blocking::Connection, blocking::Proxy};
 use std::{collections::HashMap};
 use zvariant::OwnedObjectPath;
 
-pub fn spawn_upower_listener(tx: Sender<BluetoothStats>) {
+pub fn spawn_upower_listener(tx: Sender<UPowerStats>) {
     thread::spawn(move || {
         let conn = Connection::system().expect("DBus connection failed");
 
@@ -750,13 +750,13 @@ pub fn spawn_upower_listener(tx: Sender<BluetoothStats>) {
         let mut warn = 0.0;
         if let Ok(paths) = upowercall {
             for path in paths {
-                if let Some(dev) = read_device(&conn, &path) {
+                if let Some(dev) = read_upower_device(&conn, &path) {
                     warn = dev.warn.max(warn);
                     devices.insert(path.to_string(), dev);
                 }
             }
         }
-        let obj = BluetoothStats {
+        let obj = UPowerStats {
             devices: devices.values().cloned().collect(),
             icon: "".to_string(),
             warn
@@ -805,13 +805,13 @@ pub fn spawn_upower_listener(tx: Sender<BluetoothStats>) {
                     let upowercall: Result<Vec<OwnedObjectPath>, _> = upower.call("EnumerateDevices", &());
                     if let Ok(paths) = upowercall {
                         for path in paths {
-                            if let Some(dev) = read_device(&conn, &path) {
+                            if let Some(dev) = read_upower_device(&conn, &path) {
                                 devices.insert(path.to_string(), dev);
                             }
                         }
                     }
                     // println!("devices {:?}", devices);
-                    let obj = BluetoothStats {
+                    let obj = UPowerStats {
                         devices: devices.values().cloned().collect(),
                         icon: "".to_string(),
                         warn: 0.0
@@ -835,7 +835,7 @@ fn parse_upower_event_type(line: &str) -> Option<&str> {
 }
 
 
-fn read_device(conn: &Connection, path: &OwnedObjectPath) -> Option<BatteryDevice> {
+fn read_upower_device(conn: &Connection, path: &OwnedObjectPath) -> Option<BatteryDevice> {
     let dev = Proxy::new(
         conn,
         "org.freedesktop.UPower",
@@ -862,5 +862,163 @@ fn read_device(conn: &Connection, path: &OwnedObjectPath) -> Option<BatteryDevic
         kind: UPowerDeviceKind::from(dev_type),
         percentage,
         warn
+    })
+}
+
+
+
+
+use zbus::blocking::{fdo::ObjectManagerProxy};
+
+#[derive(Debug)]
+pub struct BluetoothDevice {
+    pub name: String,
+    pub address: String,
+    pub is_connected: bool
+}
+
+
+pub fn spawn_bluetooth_listener(tx: Sender<Vec<BluetoothDevice>>) {
+    std::thread::spawn(move || {
+        let conn = match Connection::system() {
+            Ok(c) => c,
+            Err(_) => return,
+        };
+        
+        let manager = match ObjectManagerProxy::builder(&conn)
+            .destination("org.bluez")
+            .ok()
+            .and_then(|b| b.path("/").ok())
+            .and_then(|b| b.build().ok())
+        {
+            Some(m) => m,
+            None => return,
+        };
+
+        // Send initial list of devices
+        {
+            let mut devices = Vec::new();
+            if let Ok(objects) = manager.get_managed_objects() {
+                for (path, interfaces) in objects {
+                    if interfaces.contains_key("org.bluez.Device1") {
+                        if let Some(device) = read_bluetooth_device(&conn, path.into()) {
+                            devices.push(device);
+                        }
+                    }
+                }
+            }
+            let _ = tx.send(devices);
+        }
+
+        // Listen for device changes
+        // Listen for InterfacesAdded and InterfacesRemoved signals
+        let tx = Arc::new(Mutex::new(tx));
+        
+        // Thread for InterfacesAdded
+        let conn_clone = conn.clone();
+        let manager_clone = manager.clone();
+        let tx_clone = Arc::clone(&tx);
+        std::thread::spawn(move || {
+            let collect_devices = || -> Vec<BluetoothDevice> {
+                let mut devices = Vec::new();
+                if let Ok(objects) = manager_clone.get_managed_objects() {
+                    for (path, interfaces) in objects {
+                        if interfaces.contains_key("org.bluez.Device1") {
+                            if let Some(device) = read_bluetooth_device(&conn_clone, path.into()) {
+                                devices.push(device);
+                            }
+                        }
+                    }
+                }
+                devices
+            };
+            let proxy = Proxy::new(&conn_clone, "org.bluez", "/", "org.freedesktop.DBus.ObjectManager").unwrap();
+            if let Ok(mut stream) = proxy.receive_signal("InterfacesAdded") {
+                for _signal in stream {
+                    let devices = collect_devices();
+                    if let Ok(sender) = tx_clone.lock() {
+                        let _ = sender.send(devices);
+                    }
+                }
+            }
+        });
+        
+        // Thread for InterfacesRemoved  
+        let conn_clone2 = conn.clone();
+        let manager_clone2 = manager.clone();
+        let tx_clone2 = Arc::clone(&tx);
+        std::thread::spawn(move || {
+            let collect_devices = || -> Vec<BluetoothDevice> {
+                let mut devices = Vec::new();
+                if let Ok(objects) = manager_clone2.get_managed_objects() {
+                    for (path, interfaces) in objects {
+                        if interfaces.contains_key("org.bluez.Device1") {
+                            if let Some(device) = read_bluetooth_device(&conn_clone2, path.into()) {
+                                devices.push(device);
+                            }
+                        }
+                    }
+                }
+                devices
+            };
+            let proxy = Proxy::new(&conn_clone2, "org.bluez", "/", "org.freedesktop.DBus.ObjectManager").unwrap();
+            if let Ok(mut stream) = proxy.receive_signal("InterfacesRemoved") {
+                for _signal in stream {
+                    let devices = collect_devices();
+                    if let Ok(sender) = tx_clone2.lock() {
+                        let _ = sender.send(devices);
+                    }
+                }
+            }
+        });
+        
+        // Also listen for PropertiesChanged signals from any bluez object
+        // This should catch device property changes like connection status
+        let conn_clone3 = conn.clone();
+        let manager_clone3 = manager.clone();
+        let tx_clone3 = Arc::clone(&tx);
+        std::thread::spawn(move || {
+            let collect_devices = || -> Vec<BluetoothDevice> {
+                let mut devices = Vec::new();
+                if let Ok(objects) = manager_clone3.get_managed_objects() {
+                    for (path, interfaces) in objects {
+                        if interfaces.contains_key("org.bluez.Device1") {
+                            if let Some(device) = read_bluetooth_device(&conn_clone3, path.into()) {
+                                devices.push(device);
+                            }
+                        }
+                    }
+                }
+                devices
+            };
+            let proxy = Proxy::new(&conn_clone3, "org.bluez", "/", "org.freedesktop.DBus.Properties").unwrap();
+            if let Ok(mut stream) = proxy.receive_signal("PropertiesChanged") {
+                for _signal in stream {
+                    let devices = collect_devices();
+                    if let Ok(sender) = tx_clone3.lock() {
+                        let _ = sender.send(devices);
+                    }
+                }
+            }
+        });
+    });
+}
+
+fn read_bluetooth_device(conn: &Connection, path: zbus::zvariant::OwnedObjectPath) -> Option<BluetoothDevice> {
+    let dev = Proxy::new(
+        conn,
+        "org.bluez",
+        path,
+        "org.bluez.Device1",
+    ).ok()?;
+
+    let name: String = dev.get_property("Name").unwrap_or_else(|_| "Unknown".to_string());
+    let address: String = dev.get_property("Address").ok()?;
+    let is_connected: bool = dev.get_property("Connected").ok()?;
+
+    Some(BluetoothDevice {
+        name,
+        address,
+        is_connected,
     })
 }

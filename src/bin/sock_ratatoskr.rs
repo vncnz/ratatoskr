@@ -268,9 +268,12 @@ fn main() {
     let (tx_audio, rx_audio) = std::sync::mpsc::channel();
     spawn_volume_listener(tx_audio);
 
-    let (tx_bluetooth, rx_bluetooth) = std::sync::mpsc::channel();
-    spawn_upower_listener(tx_bluetooth);
+    let (tx_upower, rx_upower) = std::sync::mpsc::channel();
+    spawn_upower_listener(tx_upower);
     // print_bt_batteries();
+
+    let (tx_bluetooth, rx_bluetooth) = std::sync::mpsc::channel();
+    spawn_bluetooth_listener(tx_bluetooth);
 
     loop {
         if let Ok(mut data) = stats.lock() {
@@ -290,7 +293,7 @@ fn main() {
             }
         }
 
-        while let Ok(batterydevice_obj) = rx_bluetooth.try_recv() {
+        while let Ok(batterydevice_obj) = rx_upower.try_recv() {
             // println!("Bluetooth update {:?}", batterydevice_obj);
             if let Ok(mut data) = stats.lock() {
                 let json_val = serde_json::to_value(&batterydevice_obj).unwrap_or_default();
@@ -300,6 +303,10 @@ fn main() {
                 }
                 data.bluetooth_batteries = Some(batterydevice_obj);
             }
+        }
+
+        while let Ok(btdevice_obj) = rx_bluetooth.try_recv() {
+            eprintln!("Bluetooth update {:?}", btdevice_obj);
         }
 
         // let data = stats.lock().unwrap();

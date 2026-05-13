@@ -15,7 +15,7 @@ pub struct SystemStats {
     pub battery: Option<BatteryStats>,
     pub network: Option<NetworkStats>,
     pub display: Option<EmbeddedDisplayStats>,
-    pub bluetooth_batteries: Option<BluetoothStats>,
+    pub bluetooth_batteries: Option<UPowerStats>,
     pub written_at: u64,
     pub metronome: bool
 }
@@ -214,7 +214,7 @@ impl From<u32> for UPowerDeviceKind {
 }
 
 #[derive(Default, Serialize)]
-pub struct BluetoothStats {
+pub struct UPowerStats {
     pub devices: Vec<BatteryDevice>,
     pub icon: String,
     pub warn: f64
