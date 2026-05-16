@@ -28,7 +28,7 @@ fn send_burst (s: &SystemStats, tx: mpsc::Sender<String>) {
         ("battery", serde_json::json!(s.battery)),
         ("network", serde_json::json!(s.network)),
         ("display", serde_json::json!(s.display)),
-        ("bluetooth", serde_json::json!(s.bluetooth_batteries))
+        ("bt-batteries", serde_json::json!(s.bluetooth_batteries))
 
     ];
 
