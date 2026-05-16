@@ -140,7 +140,10 @@ pub struct BatteryDevice {
     pub name: String,
     pub kind: UPowerDeviceKind,
     pub percentage: f64,
-    pub warn: f64
+    pub warn: f64,
+    pub address: String,
+    pub is_bluetooth: bool,
+    // pub connected: bool
 }
 
 #[derive(Debug, Clone, Serialize)]

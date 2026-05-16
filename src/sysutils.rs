@@ -3,7 +3,7 @@ use std::{process::Command};
 use sysinfo::{Disks, System};
 use chrono::Utc;
 
-use crate::{AvgLoadStats, BatteryDevice, BatteryStats, UPowerStats, UPowerDeviceKind, DiskStats, EmbeddedDisplayStats, NetworkStats, RamStats, TempStats, VolumeObj, VolumeStats, WeatherStats, config::Config, utils};
+use crate::{AvgLoadStats, BatteryDevice, BatteryStats, DiskStats, EmbeddedDisplayStats, NetworkStats, RamStats, TempStats, UPowerDeviceKind, UPowerStats, VolumeObj, VolumeStats, WeatherStats, config::Config, dbg_println, utils};
 
 
 
@@ -295,6 +295,11 @@ pub fn get_battery() -> Option<BatteryStats> {
         });
     }
 
+    /* for battery in batteries.unwrap() {
+        if let Ok(b) = battery {
+            eprintln!("Battery found: {}%, state: {:?}", b.state_of_charge().value * 100.0, b.state());
+        }
+    } */
     if let Some(Ok(battery)) = batteries.unwrap().next() {
         let config: &Config = Config::global();
 
@@ -762,7 +767,7 @@ pub fn spawn_upower_listener(tx: Sender<UPowerStats>) {
             warn
         };
         let _ = tx.send(obj);
-        // println!("devices {:?}", devices);
+        dbg_println!("\nUPOWER devices {:?}\n", devices);
 
 
         // Check updates
@@ -788,7 +793,7 @@ pub fn spawn_upower_listener(tx: Sender<UPowerStats>) {
 
             if let (Some(mut path), Some(evt_type)) = (parse_upower_event(&line), parse_upower_event_type(&line)) {
                 path = path.trim();
-                // println!("trimmed: {path} {evt_type}");
+                // eprintln!("trimmed: {path} {evt_type}");
 
                 let mut update = false;
                 if evt_type == "device changed" && devices.contains_key(path) {
@@ -843,13 +848,18 @@ fn read_upower_device(conn: &Connection, path: &OwnedObjectPath) -> Option<Batte
         "org.freedesktop.UPower.Device",
     ).ok()?;
 
-    let is_present: bool = dev.get_property("IsPresent").ok()?;
+    let is_present: bool = true; // dev.get_property("IsPresent").ok()?;
     let power_supply: bool = dev.get_property("PowerSupply").ok()?;
     let dev_type: u32 = dev.get_property("Type").ok()?;
 
     if !is_present || power_supply || dev_type == 1 || dev_type == 2 {
+        dbg_println!("Upower dev type: {:?}, present: {is_present}, power_supply: {power_supply}", UPowerDeviceKind::from(dev_type));
         return None;
     }
+
+    let address: String = dev.get_property("NativePath").ok()?;
+    let is_bluetooth = address.contains("bluez");
+    dbg_println!("Upower dev type: {:?}, present: {is_present}, power_supply: {power_supply}, is_bluetooth: {is_bluetooth}, address: {address}", UPowerDeviceKind::from(dev_type));
 
     let percentage: f64 = dev.get_property("Percentage").ok()?;
     let model: String = dev.get_property("Model").unwrap_or_else(|_| "Unknown".into());
@@ -860,7 +870,9 @@ fn read_upower_device(conn: &Connection, path: &OwnedObjectPath) -> Option<Batte
     Some(BatteryDevice {
         name: model,
         kind: UPowerDeviceKind::from(dev_type),
+        address,
         percentage,
+        is_bluetooth,
         warn
     })
 }

@@ -272,8 +272,8 @@ fn main() {
     spawn_upower_listener(tx_upower);
     // print_bt_batteries();
 
-    let (tx_bluetooth, rx_bluetooth) = std::sync::mpsc::channel();
-    spawn_bluetooth_listener(tx_bluetooth);
+    let (tx_bluetooth, rx_bluetooth) = std::sync::mpsc::channel::<Vec<BluetoothDevice>>();
+    // spawn_bluetooth_listener(tx_bluetooth);
 
     loop {
         if let Ok(mut data) = stats.lock() {
