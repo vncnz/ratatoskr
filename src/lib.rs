@@ -216,7 +216,7 @@ impl From<u32> for UPowerDeviceKind {
     }
 }
 
-#[derive(Default, Serialize)]
+#[derive(Default, Serialize, Debug)]
 pub struct UPowerStats {
     pub devices: Vec<BatteryDevice>,
     pub icon: String,

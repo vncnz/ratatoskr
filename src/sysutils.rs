@@ -804,6 +804,8 @@ pub fn spawn_upower_listener(tx: Sender<UPowerStats>) {
                 } else if evt_type == "device added" {
                     update = true;
                 }
+
+                dbg_println!("BT UPDATE: {evt_type} path={} in_map={}", path, devices.contains_key(path));
                 
                 // println!("Update? {}", update);
                 if update {
