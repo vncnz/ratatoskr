@@ -5,8 +5,10 @@ use chrono::Utc;
 use ratatoskr::utils::{log_to_file, write_json_atomic};
 
 use std::fs;
+use clap::{crate_name, crate_version, Parser};
+use std::panic;
 
-use ratatoskr::{DiskStats, EmbeddedDisplayStats, NetworkStats, RamStats, SystemStats};
+use ratatoskr::{DiskStats, EmbeddedDisplayStats, NetworkStats, RamStats, SystemStats, dbg_println};
 use ratatoskr::sysutils::*;
 
 use std::sync::{mpsc};
@@ -221,7 +223,39 @@ fn disk_changed (old: &DiskStats, new: &DiskStats) -> bool {
     old.used_percent != new.used_percent
 }
 
+#[derive(Debug, Parser)]
+#[command(disable_version_flag = true, about = "Zero-config system HUD for Wayland", long_about = None)]
+struct Args {
+    /* /// Sets a custom config file
+    #[arg(short, long, value_name = "FILE")]
+    config: Option<PathBuf>, */
+
+    //#[arg(short, long, default_value_t = 1)]
+    //count: u8,
+
+    #[arg(short = 'V', long, help = "Print version")]
+    version: bool,
+}
+
 fn main() {
+    let args = Args::parse();
+
+    if args.version {
+        println!("{} {}", crate_name!(), crate_version!());
+        std::process::exit(0);
+    }
+
+    panic::set_hook(Box::new(|info| {
+        eprintln!("PANIC");
+        eprintln!("{info}");
+        let bt = std::backtrace::Backtrace::capture();
+        eprintln!("{bt}");
+
+        log_to_file("PANIC".to_string());
+        log_to_file(format!("{info}"));
+        log_to_file(format!("{bt}"));
+    }));
+
     let config = Config::init("~/.config/ratatoskr/config.json");
     log_to_file(format!("Loaded configuration: {:?}", config));
     println!("Loaded configuration: {:?}", config);
@@ -272,7 +306,7 @@ fn main() {
     spawn_upower_listener(tx_upower);
     // print_bt_batteries();
 
-    let (tx_bluetooth, rx_bluetooth) = std::sync::mpsc::channel::<Vec<BluetoothDevice>>();
+    // let (tx_bluetooth, rx_bluetooth) = std::sync::mpsc::channel::<Vec<BluetoothDevice>>();
     // spawn_bluetooth_listener(tx_bluetooth);
 
     loop {
@@ -294,7 +328,7 @@ fn main() {
         }
 
         while let Ok(batterydevice_obj) = rx_upower.try_recv() {
-            // println!("Bluetooth update {:?}", batterydevice_obj);
+            dbg_println!("Sending bluetooth update {:?}", batterydevice_obj);
             if let Ok(mut data) = stats.lock() {
                 let json_val = serde_json::to_value(&batterydevice_obj).unwrap_or_default();
                 if !send("bt-batteries".to_string(), json_val, tx.clone()) {
@@ -305,9 +339,9 @@ fn main() {
             }
         }
 
-        while let Ok(btdevice_obj) = rx_bluetooth.try_recv() {
+        /* while let Ok(btdevice_obj) = rx_bluetooth.try_recv() {
             eprintln!("Bluetooth update {:?}", btdevice_obj);
-        }
+        } */
 
         // let data = stats.lock().unwrap();
         /* if let Err(e) = write_json_atomic(output_path, &*data) {
