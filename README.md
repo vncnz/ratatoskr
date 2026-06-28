@@ -137,5 +137,6 @@ Please note that this is a personal project, for personal use, developed in my (
 - ~~Add support for configurable alert thresholds for system resources~~ Done!
 - ~~Make socket/json configurable~~ Done!
 - ~~Make config optional~~ Done!
+- Update external batteries information on percentage changes
 - Publish on AUR
 - Create a GIF?
