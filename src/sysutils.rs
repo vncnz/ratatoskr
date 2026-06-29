@@ -740,7 +740,6 @@ use zvariant::OwnedObjectPath;
 pub fn spawn_upower_listener(tx: Sender<UPowerStats>) {
     thread::spawn(move || {
         let conn = Connection::system().expect("DBus connection failed");
-
         let upower = Proxy::new(
             &conn,
             "org.freedesktop.UPower",
@@ -769,8 +768,29 @@ pub fn spawn_upower_listener(tx: Sender<UPowerStats>) {
         let _ = tx.send(obj);
         dbg_println!("\nUPOWER devices {:?}\n", devices);
 
+        // Wrap shared state for polling thread
+        let devices = Arc::new(Mutex::new(devices));
+        let devices_poll = Arc::clone(&devices);
+        let conn_poll = conn.clone();
+        let upower_poll = Proxy::new(
+            &conn_poll,
+            "org.freedesktop.UPower",
+            "/org/freedesktop/UPower",
+            "org.freedesktop.UPower",
+        ).expect("UPower proxy for polling");
+        let tx_poll = tx.clone();
 
-        // Check updates
+        // Background polling thread
+        std::thread::spawn(move || {
+            loop {
+                std::thread::sleep(std::time::Duration::from_secs(5));
+                let mut devs = devices_poll.lock().unwrap();
+                query_and_send(&conn_poll, &upower_poll, &mut devs, &tx_poll);
+                dbg_println!("BT POLL: Periodic device check");
+            }
+        });
+
+        // Event monitor thread (main loop in this thread)
         let mut child = Command::new("upower")
             .arg("-m")
             .stdout(Stdio::piped())
@@ -781,66 +801,69 @@ pub fn spawn_upower_listener(tx: Sender<UPowerStats>) {
         let reader = BufReader::new(stdout);
 
         for line in reader.lines() {
-            // println!("{line:?}");
             let line = match line {
                 Ok(l) => l,
                 Err(_) => break,
             };
 
-            // examples:
-            // "device added: /org/freedesktop/UPower/devices/..."
-            // "device changed: /org/freedesktop/UPower/devices/..."
-
-            if let (Some(mut path), Some(evt_type)) = (parse_upower_event(&line), parse_upower_event_type(&line)) {
-                path = path.trim();
-                // eprintln!("trimmed: {path} {evt_type}");
-
-                let mut update = false;
-                if evt_type == "device changed" && devices.contains_key(path) {
-                    update = true;
+            if let (Some(path), Some(evt_type)) = (parse_upower_event(&line), parse_upower_event_type(&line)) {
+                // let mut update = false;
+                let mut devs = devices.lock().unwrap();
+                if evt_type == "device removed" && devs.contains_key(path) {
+                    devs.remove(path);
+                    // update = true;
+                }
+                /* if evt_type == "device changed" && devices.contains_key(path) {
+                    // update = true;
                 } else if evt_type == "device removed" && devices.contains_key(path) {
-                    devices.remove(path);
-                    update = true;
+                    let mut devs = devices.lock().unwrap();
+                    devs.remove(path);
+                    // update = true;
                 } else if evt_type == "device added" {
-                    update = true;
-                }
-
-                dbg_println!("BT UPDATE: {evt_type} path={} in_map={}", path, devices.contains_key(path));
-                
-                // println!("Update? {}", update);
-                if update {
-                    let upowercall: Result<Vec<OwnedObjectPath>, _> = upower.call("EnumerateDevices", &());
-                    if let Ok(paths) = upowercall {
-                        for path in paths {
-                            if let Some(dev) = read_upower_device(&conn, &path) {
-                                devices.insert(path.to_string(), dev);
-                            }
-                        }
-                    }
-                    // println!("devices {:?}", devices);
-                    let obj = UPowerStats {
-                        devices: devices.values().cloned().collect(),
-                        icon: "".to_string(),
-                        warn: 0.0
-                    };
-                    let _ = tx.send(obj);
-                    // println!("devices2222222222 {:?}", devices);
-                }
+                    // update = true;
+                } */
+                dbg_println!("BT EVENT TRIGGER: {evt_type}");
+                let mut devs = devices.lock().unwrap();
+                query_and_send(&conn, &upower, &mut devs, &tx);
             }
         }
     });
 }
 
-fn parse_upower_event(line: &str) -> Option<&str> {
-    line.split(": ").nth(1)
-}
-fn parse_upower_event_type(line: &str) -> Option<&str> {
-    if let Some(cmd) = line.split(": ").nth(0) {
-        return cmd.split("\t").nth(1)
+fn query_and_send (conn: &Connection, upower: &Proxy, devices: &mut HashMap<String, BatteryDevice>, tx: &Sender<UPowerStats>) {
+    let upowercall: Result<Vec<OwnedObjectPath>, _> = upower.call("EnumerateDevices", &());
+    if let Ok(paths) = upowercall {
+        for path in paths {
+            if let Some(dev) = read_upower_device(&conn, &path) {
+                devices.insert(path.to_string(), dev);
+            }
+        }
     }
-    return None
+    let mut warn = 0.0;
+    for dev in devices.values() {
+        warn = dev.warn.max(warn);
+    }
+    let obj = UPowerStats {
+        devices: devices.values().cloned().collect(),
+        icon: "".to_string(),
+        warn
+    };
+    let _ = tx.send(obj);
 }
 
+fn parse_upower_event(line: &str) -> Option<&str> {
+    line.rsplit_once(": ").map(|(_, path)| path.trim())
+}
+
+fn parse_upower_event_type(line: &str) -> Option<&str> {
+    if let Some(bracket_pos) = line.find(']') {
+        if let Some(colon_pos) = line.rfind(": ") {
+            let between = &line[bracket_pos + 1..colon_pos];
+            return Some(between.trim());
+        }
+    }
+    None
+}
 
 fn read_upower_device(conn: &Connection, path: &OwnedObjectPath) -> Option<BatteryDevice> {
     let dev = Proxy::new(
