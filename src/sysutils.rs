@@ -734,7 +734,7 @@ use zbus::{blocking::Connection, blocking::Proxy};
     }
 } */
 
-use std::{collections::HashMap};
+use std::collections::{HashMap, HashSet};
 use zvariant::OwnedObjectPath;
 
 pub fn spawn_upower_listener(tx: Sender<UPowerStats>) {
@@ -745,11 +745,12 @@ pub fn spawn_upower_listener(tx: Sender<UPowerStats>) {
             "org.freedesktop.UPower",
             "/org/freedesktop/UPower",
             "org.freedesktop.UPower",
-        ).expect("UPower proxy");
+        )
+        .expect("UPower proxy");
 
         let mut devices: HashMap<String, BatteryDevice> = HashMap::new();
 
-        // Initial snapshot
+        // Snapshot iniziale
         let upowercall: Result<Vec<OwnedObjectPath>, _> = upower.call("EnumerateDevices", &());
         let mut warn = 0.0;
         if let Ok(paths) = upowercall {
@@ -760,15 +761,16 @@ pub fn spawn_upower_listener(tx: Sender<UPowerStats>) {
                 }
             }
         }
+
         let obj = UPowerStats {
             devices: devices.values().cloned().collect(),
             icon: "".to_string(),
-            warn
+            warn,
         };
         let _ = tx.send(obj);
         dbg_println!("\nUPOWER devices {:?}\n", devices);
 
-        // Wrap shared state for polling thread
+        // Stato condiviso
         let devices = Arc::new(Mutex::new(devices));
         let devices_poll = Arc::clone(&devices);
         let conn_poll = conn.clone();
@@ -777,76 +779,92 @@ pub fn spawn_upower_listener(tx: Sender<UPowerStats>) {
             "org.freedesktop.UPower",
             "/org/freedesktop/UPower",
             "org.freedesktop.UPower",
-        ).expect("UPower proxy for polling");
+        )
+        .expect("UPower proxy for polling");
         let tx_poll = tx.clone();
 
-        // Background polling thread
+        // Polling di backup ogni 5s
         std::thread::spawn(move || {
             loop {
-                std::thread::sleep(std::time::Duration::from_secs(5));
+                std::thread::sleep(std::time::Duration::from_secs(30));
                 let mut devs = devices_poll.lock().unwrap();
                 query_and_send(&conn_poll, &upower_poll, &mut devs, &tx_poll);
                 dbg_println!("BT POLL: Periodic device check");
             }
         });
 
-        // Event monitor thread (main loop in this thread)
-        let mut child = Command::new("upower")
-            .arg("-m")
-            .stdout(Stdio::piped())
-            .spawn()
-            .expect("failed to start upower -m");
+        // Eventi DBus reali di UPower
+        let devices_added = Arc::clone(&devices);
+        let conn_added = conn.clone();
+        let upower_added = Proxy::new(
+            &conn_added,
+            "org.freedesktop.UPower",
+            "/org/freedesktop/UPower",
+            "org.freedesktop.UPower",
+        )
+        .expect("UPower proxy for add signals");
+        let tx_added = tx.clone();
 
-        let stdout = child.stdout.take().expect("no stdout");
-        let reader = BufReader::new(stdout);
-
-        for line in reader.lines() {
-            let line = match line {
-                Ok(l) => l,
-                Err(_) => break,
-            };
-
-            if let (Some(path), Some(evt_type)) = (parse_upower_event(&line), parse_upower_event_type(&line)) {
-                // let mut update = false;
-                let mut devs = devices.lock().unwrap();
-                if evt_type == "device removed" && devs.contains_key(path) {
-                    devs.remove(path);
-                    // update = true;
+        std::thread::spawn(move || {
+            if let Ok(stream) = upower_added.receive_signal("DeviceAdded") {
+                for _ in stream {
+                    let mut devs = devices_added.lock().unwrap();
+                    query_and_send(&conn_added, &upower_added, &mut devs, &tx_added);
                 }
-                /* if evt_type == "device changed" && devices.contains_key(path) {
-                    // update = true;
-                } else if evt_type == "device removed" && devices.contains_key(path) {
-                    let mut devs = devices.lock().unwrap();
-                    devs.remove(path);
-                    // update = true;
-                } else if evt_type == "device added" {
-                    // update = true;
-                } */
-                dbg_println!("BT EVENT TRIGGER: {evt_type}");
-                let mut devs = devices.lock().unwrap();
-                query_and_send(&conn, &upower, &mut devs, &tx);
             }
-        }
+        });
+
+        let devices_removed = Arc::clone(&devices);
+        let conn_removed = conn.clone();
+        let upower_removed = Proxy::new(
+            &conn_removed,
+            "org.freedesktop.UPower",
+            "/org/freedesktop/UPower",
+            "org.freedesktop.UPower",
+        )
+        .expect("UPower proxy for remove signals");
+        let tx_removed = tx.clone();
+
+        std::thread::spawn(move || {
+            if let Ok(stream) = upower_removed.receive_signal("DeviceRemoved") {
+                for _ in stream {
+                    let mut devs = devices_removed.lock().unwrap();
+                    query_and_send(&conn_removed, &upower_removed, &mut devs, &tx_removed);
+                }
+            }
+        });
     });
 }
 
-fn query_and_send (conn: &Connection, upower: &Proxy, devices: &mut HashMap<String, BatteryDevice>, tx: &Sender<UPowerStats>) {
+fn query_and_send(
+    conn: &Connection,
+    upower: &Proxy,
+    devices: &mut HashMap<String, BatteryDevice>,
+    tx: &Sender<UPowerStats>,
+) {
     let upowercall: Result<Vec<OwnedObjectPath>, _> = upower.call("EnumerateDevices", &());
+
+    let mut current_paths = HashSet::new();
     if let Ok(paths) = upowercall {
         for path in paths {
-            if let Some(dev) = read_upower_device(&conn, &path) {
+            current_paths.insert(path.to_string());
+            if let Some(dev) = read_upower_device(conn, &path) {
                 devices.insert(path.to_string(), dev);
             }
         }
     }
+
+    devices.retain(|path, _| current_paths.contains(path));
+
     let mut warn = 0.0;
     for dev in devices.values() {
         warn = dev.warn.max(warn);
     }
+
     let obj = UPowerStats {
         devices: devices.values().cloned().collect(),
         icon: "".to_string(),
-        warn
+        warn,
     };
     let _ = tx.send(obj);
 }
